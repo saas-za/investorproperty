@@ -1,69 +1,115 @@
-import Image from "next/image";
+import { platform, portal } from "@/config/platform";
+
+function Logomark({ className = "" }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 120 56"
+      className={className}
+      role="img"
+      aria-label={`${portal.name} logomark`}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="square"
+    >
+      <path d="M22 44V22l7-5 7 5v22" />
+      <path d="M36 44V28l8 4v12" />
+      <path d="M14 44V32l8-5" />
+      <path d="M26 27v13M31 30v10M40 34v6" />
+      <path d="M8 44h96" />
+    </svg>
+  );
+}
+
+const capabilities = [
+  {
+    title: "Zoning intelligence",
+    body: "Current and proposed zoning, floor factor, height limits and permitted uses resolved from the scheme regulations.",
+  },
+  {
+    title: "Residual land value",
+    body: "Work backwards from achievable revenue and build cost to the land price a site can actually carry.",
+  },
+  {
+    title: "Rezoning upside",
+    body: "Model the delta between what a site is zoned for today and what it could be worth rezoned.",
+  },
+];
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="flex-1">
+      <section className="bg-navy text-shell">
+        <div className="mx-auto max-w-5xl px-4 py-20 sm:py-28">
+          <div className="flex flex-col items-start gap-8">
+            <Logomark className="h-14 w-auto text-gold-light" />
+            <div>
+              <p className="text-xs uppercase tracking-[0.35em] text-gold-light/80">
+                {portal.name}
+              </p>
+              <h1 className="mt-4 text-4xl font-light leading-tight sm:text-5xl">
+                Know what the land is worth
+                <span className="block text-gold-gradient">
+                  before you bid on it.
+                </span>
+              </h1>
+            </div>
+            <p className="max-w-xl text-base font-light leading-relaxed text-shell/75">
+              A free desktop valuation tool for property developers. Enter an erf,
+              its zoning and your build assumptions — get a defensible residual
+              land value in minutes instead of a week of spreadsheet work.
+            </p>
+            <div className="flex flex-wrap items-center gap-4">
+              <a
+                href="/sign-up"
+                className="rounded-sm bg-gold px-6 py-3 text-sm font-medium text-navy-deep transition hover:bg-gold-light"
+              >
+                Create a free account
+              </a>
+              <a
+                href="/sign-in"
+                className="rounded-sm border border-shell/30 px-6 py-3 text-sm font-light text-shell transition hover:border-gold-light hover:text-gold-light"
+              >
+                Sign in
+              </a>
+            </div>
+            <p className="text-xs font-light text-shell/50">
+              Free to use. An account is required so your valuations are saved to
+              you.
+            </p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="rule-gold h-px w-full" />
+      </section>
+
+      <section className="mx-auto max-w-5xl px-4 py-20">
+        <h2 className="text-2xl font-light">What it does</h2>
+        <div className="mt-10 grid gap-8 sm:grid-cols-3">
+          {capabilities.map((c) => (
+            <div key={c.title}>
+              <div className="rule-gold h-px w-10" />
+              <h3 className="mt-5 text-base font-medium">{c.title}</h3>
+              <p className="mt-3 text-sm font-light leading-relaxed opacity-75">
+                {c.body}
+              </p>
+            </div>
+          ))}
         </div>
-      </main>
-    </div>
+      </section>
+
+      {platform.enabled && (
+        <section className="border-t border-navy/10 bg-shell">
+          <div className="mx-auto max-w-5xl px-4 py-14">
+            <p className="text-sm font-light opacity-70">
+              Taking a development to market?{" "}
+              <a href={platform.url} className="underline underline-offset-4">
+                {platform.name}
+              </a>{" "}
+              handles {platform.tagline.toLowerCase()}.
+            </p>
+          </div>
+        </section>
+      )}
+    </main>
   );
 }

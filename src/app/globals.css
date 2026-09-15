@@ -1,26 +1,69 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-navy: #26415e;
+  --brand-navy-deep: #1a2e44;
+  --brand-shell: #f5f3f2;
+
+  /* Metallic gold sweep, stops taken from the brand guideline */
+  --brand-gold: #c9a86a;
+  --brand-gold-light: #e4c07e;
+  --brand-gold-mid: #d0ad6b;
+  --brand-gold-deep: #a98f57;
+  --gradient-gold: linear-gradient(
+    135deg,
+    #e4c07e 0%,
+    #dfbb79 12%,
+    #d0ad6b 28%,
+    #b79653 44%,
+    #b19252 58%,
+    #a98f57 72%,
+    #caaa6c 88%,
+    #e4c07e 100%
+  );
+
+  --background: var(--brand-shell);
+  --foreground: var(--brand-navy);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-navy: var(--brand-navy);
+  --color-navy-deep: var(--brand-navy-deep);
+  --color-shell: var(--brand-shell);
+  --color-gold: var(--brand-gold);
+  --color-gold-light: var(--brand-gold-light);
+  --color-gold-deep: var(--brand-gold-deep);
+  --font-sans: var(--font-poppins);
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  :root:not([data-theme="light"]) {
+    --background: var(--brand-navy-deep);
+    --foreground: var(--brand-shell);
   }
+}
+
+:root[data-theme="dark"] {
+  --background: var(--brand-navy-deep);
+  --foreground: var(--brand-shell);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-poppins), system-ui, sans-serif;
+  font-weight: 300;
+}
+
+.text-gold-gradient {
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.rule-gold {
+  background: var(--gradient-gold);
 }
