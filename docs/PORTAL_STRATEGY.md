@@ -72,8 +72,10 @@ generation is an application, not a landing page. Building it in HubSpot means f
 platform on every feature and being unable to move later. Building it separately costs nothing
 extra now and keeps every option open.
 
-Whether the marketing site eventually moves off HubSpot is a **separate, later** decision that
-should be made on marketing grounds (cost, editing workflow, SEO), not forced by the portal.
+The marketing site *does* eventually move off HubSpot (§9.6) — but it should move **after** the
+portal exists, not before, and onto the foundation the portal establishes. Sequencing it this way
+means the migration inherits a design system, component library and deployment pipeline that are
+already proven in production, instead of being a from-scratch rebuild that delays the portal.
 
 ## 4. Auth and data
 
@@ -167,28 +169,60 @@ promotional. That can wait until the valuation flow exists.
 3. **The valuation engine.** Reimplement the Oliphantskop model. Save scenarios per user.
 4. **The report.** Branded PDF export — this is what gets forwarded to partners and lenders, so
    it carries the brand further than the site does.
-5. **Site intake from Cape Farm Mapper.** Port `parseCFMData()` so a developer pastes rather
+5. **Community feedback board.** Idea submission, upvoting, status. Cheap to build, and it starts
+   collecting direction from real users while the deeper features are still being built.
+6. **Site intake from Cape Farm Mapper.** Port `parseCFMData()` so a developer pastes rather
    than types.
-6. **Land listings.** Surface the deal flow already being originated, matched to the criteria
+7. **Comparable sales evidence.** Auto-populate achievable selling rates from the deeds and
+   Property24 data already collected (`VALUATION_MODEL.md` §9).
+8. **Land listings.** Surface the deal flow already being originated, matched to the criteria
    the valuations revealed.
 
 Stages 1–2 are a genuinely useful free product on their own, which matters — it means there is
 something to launch before the hard part is finished.
 
-## 9. Open questions
+## 9. Decisions taken (2026-09-15)
 
-1. **The Oliphantskop workbook** — needs to be readable before the engine can be built to match
-   it. Drop a copy in this repo.
-2. **Geographic scope.** The zoning table is City of Cape Town. Oliphantskop and Langebaan are
-   West Coast, under different municipal schemes. Does v1 cover Cape Town only and say so
-   plainly, or does it need Swartland/Saldanha scheme data too?
-3. **How much do you give away free?** Full residual land value including your cost assumptions
-   is genuinely valuable IP. Options: full access free (maximum lead flow, gives away your
-   model), or free with generic industry-default assumptions and your calibrated real-world
-   assumptions reserved for clients.
-4. **Who is it actually for?** Established developers who already have their own models, or
-   first-time/smaller developers who don't? That changes the tool's depth and tone considerably.
-5. **The platform name** — Propello vs ConveyAssist vs other. Doesn't block anything now, but
-   blocks stage 4's report branding.
-6. **Does the marketing site eventually move off HubSpot?** Not now, but worth deciding before
-   the portal's design language and the website's diverge too far to reconcile.
+1. **The Oliphantskop workbook** — delivered and parsed. Full analysis in
+   [`VALUATION_MODEL.md`](./VALUATION_MODEL.md). It is a professional-grade appraisal at real
+   scale (79 ha, R200m land, R2bn build, 21 phases) and is now the engine's specification.
+2. **Geographic scope: City of Cape Town only for v1**, other municipalities added later.
+   ⚠️ *This collides with the worked example* — Oliphantskop is West Coast District Municipality,
+   using `Residential I/II/III` designations and **density (units/ha)**, whereas the Cape Town
+   zoning table uses `SR1/GR1/…` and **floor factor**. See `VALUATION_MODEL.md` §8: supporting
+   both metrics from the start costs very little and avoids v1 being unable to run your own
+   flagship model. Recommended.
+3. **Monetisation: the valuation tool is not the product.** Revenue comes from ConveyAssist —
+   a setup fee plus pay-as-you-go — targeting the **document production gap**, which is the
+   identified market opening. This settles the "how much do you give away" question decisively:
+   **give the valuation away generously.** Its job is to put qualified developers in front of the
+   document-production offering, so holding features back to protect the model works against the
+   actual revenue line. The IP worth protecting is the calibrated assumption set, not the
+   calculator.
+4. **Audience: open to anyone**, with a **community feedback board** — developers and other users
+   post ideas for upgrades. Worth treating as a real feature rather than a comment box: public
+   idea submission, upvoting, and status (`considered` / `planned` / `shipped`). Two payoffs
+   beyond the feedback itself — it signals an actively-developed product, and it is a continuous,
+   self-selecting source of exactly the feature requests worth building.
+5. **Name: Propello preferred**, but the domain was renewed by its current holder while the site
+   sits dormant. Nothing here blocks on it — `src/config/platform.ts` keeps the name in one place
+   behind a disabled flag. Worth a backorder/broker approach on the domain in parallel, since a
+   dormant-but-renewed domain sometimes lapses later.
+6. **The marketing site does eventually move off HubSpot.** The goal is a strong site on a
+   foundation you own, without a "powered by HubSpot" badge. This does not change the sequencing
+   recommendation in §3 — portal first, on its own subdomain — but it does change the endgame:
+   the portal becomes the foundation the marketing site is later rebuilt *onto*, rather than a
+   separate satellite. Practically, that means design tokens, component library and layout
+   primitives built for the portal should be built as if the marketing site will reuse them,
+   because it will.
+
+## 10. Still open
+
+- **Non-sellable land ratio** (`VALUATION_MODEL.md` §6) — how much of this does the free tool ask
+  the user to supply, versus estimate from a default? It is one of the biggest viability drivers.
+- **Comparable sales data** (`VALUATION_MODEL.md` §9) — you hold four years of Full Title and
+  Sectional Title deeds evidence plus competitor benchmarks. Auto-populating achievable selling
+  rates from it would be the single strongest feature, but it needs a decision on whether that
+  data is shared, and at what granularity.
+- **Appraisal vs. residual mode** — both are needed (`VALUATION_MODEL.md` §7); which one is the
+  default landing experience?
