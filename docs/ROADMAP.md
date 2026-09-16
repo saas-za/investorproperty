@@ -231,6 +231,8 @@ progressive disclosure rather than on the first screen.
 
 ### Phase 0 — Foundation
 - [ ] Supabase project: auth (email + Google), `profiles` table
+- [ ] **Server-side calculation architecture from day one** (§10) — engine in server actions,
+      assumptions in the database, nothing model-related in the client bundle
 - [ ] Sign-up / sign-in / account shell on the existing brand
 - [ ] HubSpot contact sync on signup (server route, custom properties for developer profile)
 - [ ] Deploy `portal.investorproperty.co.za` → Vercel, CNAME (leave HubSpot `www` untouched)
@@ -245,10 +247,20 @@ The simple version you described, and deliberately nothing more:
 - [ ] Shareable read-only result link — **this is the seller conversation**, and it's how the tool
       spreads without marketing spend
 
+### Phase 1b — Location intelligence
+- [ ] Map pin input, reverse geocoding to suburb (port from `New Listing.js`)
+- [ ] Google Places: distance to nearest transport, schools, retail within radius
+- [ ] Surrounding land use N/S/E/W
+- [ ] Transport proximity → suggested product type (apartments vs houses)
+- [ ] Static map image capture for the report
+
 ### Phase 2 — Servicing engine
 - [ ] Land-use schedule: multiple uses per site, each with area, FF, coverage, sellable flag
+- [ ] The two-stage area cascade (§9.2) with per-use overrides
 - [ ] Internal services per m²
-- [ ] BICLs — encode the COCT DC Calculator (folder already located in Drive)
+- [ ] **DC engine — fully specced in [`DEVELOPMENT_CHARGES.md`](./DEVELOPMENT_CHARGES.md)**:
+      six services, demand factor × unit rate, existing-rights credit, PT2 modifier, exemptions,
+      CPAF-escalated rate tables by financial year
 - [ ] BICL rebate modelling
 - [ ] Output: serviced plot value, cost to service, residual land value on a plot-sale exit
 
@@ -267,8 +279,14 @@ The simple version you described, and deliberately nothing more:
 
 ### Phase 5 — The report
 - [ ] Prodigious-structured output: exec summary, cost sections, per-unit allocation
-- [ ] Branded PDF export
+- [ ] **Branded PDF export including the Google map image** (CRM Matrix style) — §9.3
 - [ ] Both directions: developer view (what can I pay) and seller view (is the ask defensible)
+- [ ] Record the rate-table version and as-at date on every report so it stays reproducible
+
+### Phase 5b — Validation gate *(before public recommendation)*
+- [ ] Back-test 5–10 known deals from the deals folder (§12)
+- [ ] Record variance, tune assumptions against the whole set
+- [ ] Meet the agreed accuracy target before recommending the tool to either side
 
 ### Phase 6 — Comparables *(the moat)*
 - [ ] Ingest the deeds data already held (Full Title / Sectional Title 2021–24), P24, Rode's Reports
@@ -307,13 +325,164 @@ everything.
 
 ---
 
-## 9. Open questions
+## 9. Answers (2026-09-16)
 
-1. **Status ladder precision.** Are the 5–8 / 10 / 12 / 15% figures consistent across product
-   types and locations, or do they shift for industrial vs residential, metro vs rural?
-2. **Gross-to-net default.** 64% on the industrial site. Is there a rule of thumb by product type,
-   or must it always be user-supplied?
-3. **Who sees the seller view?** Free to everyone, or is the "is this ask defensible" report the
-   first paid artefact?
-4. **Municipal scope after Cape Town** — Stellenbosch (maps already held) or West Coast
-   (Oliphantskop's home)?
+**1. Status ladder** — the percentages hold for industrial as well as residential, but are *more
+tested and proven in residential*. Implementation: use one ladder, but tag industrial results with
+lower confidence, and revisit once industrial deals have been back-tested.
+
+**2. The area cascade** — there are **two separate 60/40 splits**, at land level and at building
+level. This was the most important correction; the earlier model collapsed them into one.
+
+```
+Gross site area
+   × ~60%                      land efficiency
+   ─────────────────────────   (40% = roads, communal, services, open space)
+ = Net developable / sellable erven
+   × floor factor              → permissible bulk
+   (capped by coverage         → footprint)
+ = Gross building area
+   − parking                   bays × ~25 m²
+   ─────────────────────────   residential 2 bays/100 m²
+                               commercial  4 bays/100 m²
+                               retail      6 bays/100 m²
+   × ~60% (sometimes 70%)      building efficiency
+   ─────────────────────────   (40% = lobbies, corridors, lifts, service ducts)
+ = Net usable / sellable area
+   × rate per m²
+ = Gross realisation
+```
+
+Notes taken from your description:
+- 60/40 is the rule of thumb at land level, applying to residential and **especially retail**
+- The building is then split again, 60/40 or sometimes 70/30, to get actual sellable area
+- Parking ratios differ sharply by use and are a major consumer of bulk — retail at 6 bays/100 m²
+  is three times residential
+- "In terms of a basket of rights, this ratio can change" — so the defaults must be overridable
+  per land use, not global
+
+⚠️ **Open sub-question:** does parking consume *bulk* (counting against floor factor) or sit
+outside it? SA schemes differ, and it materially changes sellable area. Needs confirming before
+Phase 3.
+
+**3. Availability — free to everyone, including sellers.** Your framing:
+
+> *"It is usually the sellers who need counselling… I mean, advice. They have say R20m in mind but
+> the developer only offers R10m, to which they respond that they have lost R10m."*
+
+The tool exists to set the record straight from the outset **without appearing to influence**.
+Both sides accept the system's number because the system has no side. This confirms the
+both-directions design in §1 and rules out gating the seller view behind payment — gating it would
+destroy the neutrality that makes it work.
+
+Two consequences:
+- **Accuracy is the launch gate, not a nice-to-have.** You will not recommend it until it's right,
+  and developers will back-test it against deals they already know. See §12.
+- **Report requirement:** the valuation must produce a **downloadable PDF including the Google map
+  image**, in the style of the CRM Matrix output. The existing `New Listing.js` already generates
+  static map blobs — that pattern carries over.
+
+**4. Live data links** — you're pursuing deeds office connectivity and municipal framework links
+separately. Live links matter, so the architecture should assume external data sources are
+*refreshed*, not imported once: version the rate tables and comparable data, and record the
+as-at date on every valuation so old reports stay reproducible.
+
+---
+
+## 10. Non-negotiable: the calculation runs server-side
+
+> *"Most of the calculations should be behind a gate. The user should not be privy to any IP used
+> to calculate the result."*
+
+This is an architectural constraint, not a preference, and it has to be designed in from the first
+line of Phase 1 — retrofitting it later means rewriting the engine.
+
+**The rule: the browser sends inputs and receives outputs. Nothing else.**
+
+| Must stay server-side | Why |
+|---|---|
+| Status ladder percentages | The core IP — converts planning risk to a number |
+| Build cost, servicing and professional fee assumptions | Your calibrated rates, accumulated over real deals |
+| DC demand factors and unit rates | Bought/derived data |
+| Efficiency ratios and parking defaults | Encoded judgement |
+| Intermediate line items | Reveal the model even when individual constants don't |
+
+Practically:
+
+- Engine lives in **server actions / API routes**, never imported into a client component
+- Assumption tables live in the **database**, never in the bundle or a constants file
+- Response payload carries **only the figures deliberately displayed** — not the working
+- **No source maps in production**, and no client-side "recalculate on input change" convenience
+  that would require shipping the formulas
+- Rate limiting, since an unthrottled endpoint can be brute-forced to reverse out the model by
+  sweeping inputs
+
+**The residual risk to accept consciously:** anyone patient can probe the endpoint and infer
+relationships. Mitigation is rate limiting plus the fact that the *calibration* — knowing that
+raw agri is 5–8% and not 3% or 12% — is the real asset, and one probe doesn't reveal how it was
+arrived at or that it's right.
+
+**"No frills" is the design brief.** A developer who already knows the answer plugs in numbers and
+gets what they expected. That is both the UX goal and the validation method.
+
+---
+
+## 11. Location intelligence — making the implicit explicit
+
+> *"What is currently north, south, east and west from the land? How far is the nearest transport
+> (this is one element of apartments vs houses as it implies owning a car)?"*
+
+This is the expert judgement that currently lives in your head and the agent's, and it is what
+separates a calculator from a valuation. The tool needs objective data to support the product-type
+decision rather than asking the user to just assert it.
+
+**From a map pin, derive:**
+
+| Signal | Source | Feeds |
+|---|---|---|
+| Surrounding land use N/S/E/W | Zoning layer + satellite/Places | Product suitability, risk |
+| Distance to nearest public transport | Google Places (transit stations, taxi ranks, bus stops) | **Apartments vs houses** — car ownership assumption |
+| Schools within radius | Google Places | Family housing demand |
+| Retail / amenities | Google Places | Convenience premium, rate per m² |
+| Suburb identification | Reverse geocoding | Comparable sales matching |
+| **PT2 zone status** | City of Cape Town spatial layer | **Directly reduces the roads DC** — see `DEVELOPMENT_CHARGES.md` §4 |
+
+The transport link is the strongest finding here: **proximity to transport affects the answer
+twice over.** It determines whether apartments are viable at all (buyers who don't need a car),
+*and* the City itself discounts development charges in PT2 zones. Both push the same direction,
+and both are derivable from a pin on a map. That is a defensible, objective basis for a
+recommendation that currently reads as instinct.
+
+`New Listing.js` already does reverse geocoding and static map generation — reuse it rather than
+rebuild.
+
+---
+
+## 12. Validation strategy — accuracy is the launch gate
+
+Since you won't recommend the tool until it's right, and developers will test it retrospectively
+against deals they already know, that back-testing should be a build activity rather than
+something discovered after launch.
+
+- **The deals folder is a regression test suite.** Each completed deal is a known input → known
+  answer pair.
+- Pick 5–10 deals spanning residential/industrial, raw/zoned, build-out/plot-sale. Run each
+  through the engine, record variance.
+- **Define the accuracy target explicitly** — "within X% on Y% of deals" — and treat it as the
+  release criterion for recommending it publicly.
+- Keep the test set versioned, so tuning an assumption shows its effect across every deal at once
+  rather than fixing one and breaking four.
+
+When it's time for this, naming two or three specific deals is far cheaper than crawling the
+folder.
+
+---
+
+## 13. Remaining open questions
+
+1. **Does parking count against bulk** (floor factor) or sit outside it? Materially changes
+   sellable area (§9.2).
+2. **Which roads DC tier is PT2?** Two tiers exist (≈R4,840.69 and ≈R2,278.79/trip); the mapping
+   needs confirming from the City's documentation (`DEVELOPMENT_CHARGES.md` §2).
+3. **Accuracy target** for the validation gate — what variance is acceptable?
+4. **Municipality order after Cape Town** — Stellenbosch (maps held) or West Coast (Oliphantskop)?
