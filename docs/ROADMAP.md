@@ -239,11 +239,14 @@ progressive disclosure rather than on the first screen.
 
 ### Phase 1 — Quick Land Value *(the wedge — ship this first)*
 The simple version you described, and deliberately nothing more:
-- [ ] Inputs: hectares, product type, density (defaulted per product), average unit price, status
-- [ ] Gross-to-net developable ratio, defaulting conservatively with a visible warning
-- [ ] Status ladder (5–8% / 10% / 12% / 15%) as a slider with plain-language labels
-- [ ] Output: land value, value per hectare, value per opportunity
-- [ ] Save to account, name the scenario
+- [x] Inputs: hectares, product type, density (defaulted per product, overridable), average unit
+      price, status — live at `/valuation`, engine in `src/lib/server/valuation-engine.ts`
+- [x] Gross-to-net developable ratio, defaulting conservatively (60%) with a visible warning
+- [x] Status ladder (6.5% / 10% / 12% / 15% — midpoints of your ranges) as a dropdown with
+      plain-language labels
+- [x] Output: land value, value per hectare, value per opportunity, plus the density and status
+      factor actually used, so both sides can see why the system said what it said
+- [ ] Save to account, name the scenario — blocked on auth (below)
 - [ ] Shareable read-only result link — **this is the seller conversation**, and it's how the tool
       spreads without marketing spend
 
