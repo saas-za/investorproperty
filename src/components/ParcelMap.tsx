@@ -22,10 +22,27 @@ export interface Municipality {
   category: string;
 }
 
+/**
+ * eThekwini publishes its own zoning as a live, queryable layer — unlike Cape
+ * Town, where no equivalent public service exists and the Development Charges
+ * panel falls back to the transcribed scheme regulations instead. Only ever
+ * populated on a click inside eThekwini.
+ */
+export interface EthekwiniZoning {
+  zoning: string;
+  schemeName: string;
+  landUse: string;
+  suburb: string;
+}
+
 interface Props {
   /** Parent owns the selection — the estimate and the CRM do different things with it. */
   selected: SelectedParcel[];
-  onChange: (parcels: SelectedParcel[], municipality: Municipality | null) => void;
+  onChange: (
+    parcels: SelectedParcel[],
+    municipality: Municipality | null,
+    ethekwiniZoning?: EthekwiniZoning,
+  ) => void;
   /** One parcel for the CRM's land record; several for a consolidated site. */
   multiple?: boolean;
   className?: string;
@@ -142,7 +159,7 @@ export default function ParcelMap({
               ? [...selectedRef.current, parcel]
               : [parcel];
 
-          onChangeRef.current(next, data.municipality ?? null);
+          onChangeRef.current(next, data.municipality ?? null, data.ethekwiniZoning ?? undefined);
         } catch {
           setError("Could not reach the cadastral service");
         } finally {

@@ -37,6 +37,25 @@ const PARCEL_LAYERS = [
 const MUNICIPALITY_LAYER = 1;
 
 /**
+ * eThekwini (Durban) publishes its own zoning as a live, public ArcGIS
+ * FeatureServer through its open-data Hub — verified by direct query, not
+ * just by reading the catalog page. Cape Town's cadastral service carries no
+ * equivalent live zoning layer, which is why the Cape Town side of this tool
+ * relies on the published PDF scheme regulations instead (`zoning-coct.ts`).
+ * Where a live layer exists, prefer it over a transcribed one — it cannot go
+ * stale the way a hand-copied table can.
+ */
+const ETHEKWINI_ZONING_URL =
+  "https://services3.arcgis.com/HO0zfySJshlD6Twu/arcgis/rest/services/Zoning/FeatureServer/0";
+
+export interface EthekwiniZoning {
+  zoning: string;
+  schemeName: string;
+  landUse: string;
+  suburb: string;
+}
+
+/**
  * Farm portions and parent farms run to tens of square kilometres and their
  * boundaries carry far more vertices than an erf, so the geometry takes real
  * time to come back. Undeveloped land is exactly the case this tool is for, so
@@ -98,6 +117,8 @@ export interface ParcelLookup {
   municipality: Municipality | null;
   /** True when the municipality has a development-charge rate set loaded. */
   developmentChargesAvailable: boolean;
+  /** Only set inside eThekwini, where a live zoning layer actually exists. */
+  ethekwiniZoning?: EthekwiniZoning;
 }
 
 /** Municipalities whose DC rate tables have actually been extracted. */
@@ -253,6 +274,46 @@ async function findParcel(lng: number, lat: number): Promise<Parcel | null> {
   return null;
 }
 
+async function findEthekwiniZoning(lng: number, lat: number): Promise<EthekwiniZoning | null> {
+  const params = new URLSearchParams({
+    geometry: `${lng},${lat}`,
+    geometryType: "esriGeometryPoint",
+    inSR: "4326",
+    spatialRel: "esriSpatialRelIntersects",
+    outFields: "ZONING,SCHEMENAME,LANDUSE,SUBURB",
+    returnGeometry: "false",
+    f: "json",
+  });
+
+  const res = await fetch(`${ETHEKWINI_ZONING_URL}/query?${params}`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
+    next: { revalidate: 86_400 },
+  });
+  if (!res.ok) throw new Error(`eThekwini zoning service returned ${res.status}`);
+
+  const json = (await res.json()) as {
+    error?: { message?: string };
+    features?: { attributes: Record<string, unknown> }[];
+  };
+  if (json.error) throw new Error(json.error.message ?? "eThekwini zoning query failed");
+
+  // A point can straddle more than one record — a road reservation sitting
+  // over the erf it serves, for instance. The one that actually names a zone
+  // is the useful answer; an "EXISTING STREET" record with a blank ZONING
+  // field is not.
+  const row = (json.features ?? [])
+    .map((f) => f.attributes)
+    .find((a) => str(a.ZONING));
+  if (!row) return null;
+
+  return {
+    zoning: str(row.ZONING),
+    schemeName: str(row.SCHEMENAME),
+    landUse: str(row.LANDUSE),
+    suburb: str(row.SUBURB),
+  };
+}
+
 async function findMunicipality(lng: number, lat: number): Promise<Municipality | null> {
   const rows = await arcgis(MUNICIPALITY_LAYER, lng, lat, false);
   const row = rows[0];
@@ -284,11 +345,24 @@ export async function lookupParcel(lat: number, lng: number): Promise<ParcelLook
     throw new Error("The cadastral service did not respond");
   }
 
+  // Only worth the extra round trip inside eThekwini, where the layer exists.
+  let ethekwiniZoning: EthekwiniZoning | undefined;
+  if (municipality?.code === "ETH") {
+    try {
+      ethekwiniZoning = (await findEthekwiniZoning(lng, lat)) ?? undefined;
+    } catch {
+      // Zoning is a bonus on top of the parcel and municipality, both of
+      // which have already resolved by this point — losing it should not
+      // take the whole lookup down with it.
+    }
+  }
+
   return {
     parcel,
     municipality,
     developmentChargesAvailable: municipality
       ? DC_MUNICIPALITIES.has(municipality.code)
       : false,
+    ethekwiniZoning,
   };
 }

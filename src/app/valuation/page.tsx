@@ -3,10 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import CoctZoningCheck from "@/components/CoctZoningCheck";
 import ContactCta from "@/components/ContactCta";
 import DevelopmentCharges, { type DcSummary } from "@/components/DevelopmentCharges";
 import NumberInput from "@/components/NumberInput";
-import ParcelMap, { type Municipality, type SelectedParcel } from "@/components/ParcelMap";
+import ParcelMap, {
+  type EthekwiniZoning,
+  type Municipality,
+  type SelectedParcel,
+} from "@/components/ParcelMap";
 import { portal } from "@/config/platform";
 import {
   CASH_CEILING_NOTE,
@@ -199,6 +204,8 @@ export default function ValuationPage() {
   const [showMap, setShowMap] = useState(false);
   const [parcels, setParcels] = useState<SelectedParcel[]>([]);
   const [municipality, setMunicipality] = useState<Municipality | null>(null);
+  /** Only ever set on a click inside eThekwini, where a live zoning layer exists. */
+  const [ethekwiniZoning, setEthekwiniZoning] = useState<EthekwiniZoning | null>(null);
   /** Lifted out of the DC panel so the printed report can carry it. */
   const [dcResult, setDcResult] = useState<DcSummary | null>(null);
 
@@ -220,9 +227,14 @@ export default function ValuationPage() {
    * on a map. The split fields are cleared with it, because a developable
    * percentage carried over from a different site is worse than a blank one.
    */
-  function onParcelsChange(next: SelectedParcel[], muni: Municipality | null) {
+  function onParcelsChange(
+    next: SelectedParcel[],
+    muni: Municipality | null,
+    zoning?: EthekwiniZoning,
+  ) {
     setParcels(next);
     if (muni) setMunicipality(muni);
+    setEthekwiniZoning(zoning ?? null);
     if (next.length === 0) {
       setMunicipality(null);
       return;
@@ -526,6 +538,21 @@ export default function ValuationPage() {
                 differs from the registered extent.
               </p>
             )}
+            {ethekwiniZoning && (
+              <p className="mt-1.5 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900">
+                <span className="font-medium">
+                  eThekwini zoning: {ethekwiniZoning.zoning || "unzoned"}
+                </span>
+                {ethekwiniZoning.schemeName && ` · ${ethekwiniZoning.schemeName} scheme`}
+                {ethekwiniZoning.suburb && ` · ${ethekwiniZoning.suburb}`}
+                <span className="mt-1 block text-emerald-800/70">
+                  From eThekwini&apos;s own live zoning layer, not a transcribed table — it cannot
+                  go stale the way a hand-copied scheme can. Cape Town has no public equivalent, so
+                  the density and floor-factor defaults there still rest on the published PDF
+                  regulations.
+                </span>
+              </p>
+            )}
             <div className="mt-1.5 grid grid-cols-2 gap-3">
               <div>
                 <NumberInput
@@ -650,6 +677,19 @@ export default function ValuationPage() {
                         still earns bulk.
                       </p>
                     )}
+
+                    {/* Cape Town only — this is transcribed from the published
+                        scheme regulations, not a national rule. Optional,
+                        because most people typing a floor factor already got
+                        it from an SDP and don't need it re-derived. */}
+                    <CoctZoningCheck
+                      grossSiteM2={Number(areaM2) || 0}
+                      proposedFloorAreaM2={floorAreaPreview ?? 0}
+                      averageUnitSizeM2={Number(avgUnitSize) || 0}
+                      proposedCoverageM2={
+                        coveragePct ? (Number(coveragePct) / 100) * (Number(areaM2) || 0) : undefined
+                      }
+                    />
                   </div>
                 )}
               </>
