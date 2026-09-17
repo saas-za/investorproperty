@@ -81,10 +81,11 @@ body {
   }
 
   /* Zero margins suppress the browser's own header/footer (URL, date, page
-     number) in Chrome and Edge — the report supplies its own. */
+     number) in Chrome and Edge — a non-zero @page margin does NOT suppress
+     them, so the report supplies its own padding instead, via .print-pad. */
   @page {
     size: A4;
-    margin: 12mm;
+    margin: 0;
   }
 
   html,
@@ -104,5 +105,10 @@ body {
   .print-sheet {
     box-shadow: none !important;
     border: 0 !important;
+    margin: 0 !important;
+  }
+
+  .print-pad {
+    padding: 12mm !important;
   }
 }

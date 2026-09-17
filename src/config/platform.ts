@@ -12,5 +12,5 @@ export const platform = {
 
 export const portal = {
   name: "Investor Property",
-  product: "Desktop Valuation",
+  product: "Desktop Land Estimate",
 } as const;

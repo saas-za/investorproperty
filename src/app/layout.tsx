@@ -11,7 +11,7 @@ const poppins = Poppins({
 export const metadata: Metadata = {
   title: "Investor Property Portal",
   description:
-    "Desktop valuations, zoning insight and development feasibility for property developers.",
+    "Desktop land estimates, zoning insight and development feasibility for property developers.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

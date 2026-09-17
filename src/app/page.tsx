@@ -55,7 +55,7 @@ export default function Home() {
               </h1>
             </div>
             <p className="max-w-xl text-base font-light leading-relaxed text-shell/75">
-              A free desktop valuation tool for property developers. Enter an erf,
+              A free desktop land estimate tool for property developers. Enter an erf,
               its zoning and your build assumptions — get a defensible residual
               land value in minutes instead of a week of spreadsheet work.
             </p>
@@ -74,7 +74,7 @@ export default function Home() {
               </a>
             </div>
             <p className="text-xs font-light text-shell/50">
-              Free to use. An account is required so your valuations are saved to
+              Free to use. An account is required so your estimates are saved to
               you.
             </p>
           </div>
