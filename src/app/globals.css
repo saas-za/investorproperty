@@ -67,3 +67,10 @@ body {
 .rule-gold {
   background: var(--gradient-gold);
 }
+
+/* Keeps the first column pinned while a wide matrix scrolls sideways. */
+.matrix-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 10;
+}
