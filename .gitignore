@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Proprietary financial models and source workbooks - never publish
 /reference
+
+# The template is safe to commit; real values live in .env.local
+!.env.example

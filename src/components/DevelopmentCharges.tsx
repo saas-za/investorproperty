@@ -21,7 +21,8 @@ interface DcLineResult {
   charge: number;
 }
 
-interface DcResult {
+/** The shape the printed report needs. Exported so the page can hold it. */
+export interface DcSummary {
   municipalityName: string;
   rateYear: string;
   projectedRates: boolean;
@@ -65,6 +66,8 @@ interface Props {
   municipalityName?: string;
   /** Seeds the first row, so the panel opens already carrying the scheme. */
   suggestedUnits?: number;
+  /** Lifts the result so the printed report can include it. */
+  onResult?: (result: DcSummary | null) => void;
   className?: string;
 }
 
@@ -72,6 +75,7 @@ export default function DevelopmentCharges({
   municipalityCode,
   municipalityName,
   suggestedUnits,
+  onResult,
   className = "",
 }: Props) {
   const inCapeTown = municipalityCode === "CPT";
@@ -87,7 +91,7 @@ export default function DevelopmentCharges({
   const [rows, setRows] = useState<Row[]>([{ code: "A11", newRight: "", existingRight: "" }]);
   const [pt2, setPt2] = useState(false);
   const [linkServices, setLinkServices] = useState("");
-  const [result, setResult] = useState<DcResult | null>(null);
+  const [result, setResult] = useState<DcSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -148,9 +152,11 @@ export default function DevelopmentCharges({
       if (!res.ok) {
         setError(data.error ?? "Calculation failed");
         setResult(null);
+        onResult?.(null);
         return;
       }
       setResult(data);
+      onResult?.(data);
     } catch {
       setError("Could not reach the calculator");
     } finally {
@@ -317,7 +323,7 @@ export default function DevelopmentCharges({
   );
 }
 
-function DcReport({ result }: { result: DcResult }) {
+function DcReport({ result }: { result: DcSummary }) {
   return (
     <div className="mt-5 border-t border-navy/10 pt-5">
       <table className="w-full text-xs">

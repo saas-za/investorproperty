@@ -3,10 +3,19 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import DevelopmentCharges from "@/components/DevelopmentCharges";
+import ContactCta from "@/components/ContactCta";
+import DevelopmentCharges, { type DcSummary } from "@/components/DevelopmentCharges";
 import NumberInput from "@/components/NumberInput";
 import ParcelMap, { type Municipality, type SelectedParcel } from "@/components/ParcelMap";
 import { portal } from "@/config/platform";
+import {
+  CASH_CEILING_NOTE,
+  COMPLIMENTARY_NOTE,
+  DEAL_STRUCTURES,
+  dueDiligenceNotes,
+  PARTY_LABELS,
+  type Party,
+} from "@/lib/advice";
 
 interface Option {
   value: string;
@@ -63,6 +72,71 @@ const PCT_EPSILON = 0.5;
 
 const emptyBasketRow = (): BasketRow => ({ unitType: "", opportunities: "", pricePerOpportunity: "" });
 
+/**
+ * Typical unit types for a basket of rights. A free-text field produced
+ * "2 bed", "2-bed", "Two bedroom" and "2B" on the same site, which makes the
+ * breakdown table unreadable and the rows impossible to total by type.
+ * "Other" keeps the escape hatch.
+ */
+const UNIT_TYPES = [
+  "Bachelor / studio",
+  "1-bed apartment",
+  "2-bed apartment",
+  "3-bed apartment",
+  "Penthouse",
+  "Simplex townhouse",
+  "Duplex townhouse",
+  "Single residential erf",
+  "Group housing unit",
+  "Retirement unit",
+  "Student bed",
+  "Retail GLA (m²)",
+  "Office GLA (m²)",
+  "Industrial GLA (m²)",
+  "Serviced erf",
+  "Other",
+] as const;
+
+/**
+ * What the seller's price expectation is actually built on. These are ordered
+ * weakest to strongest claim, and the report says which one was used — an
+ * architect's concept and an approved SDP are not the same evidence.
+ */
+type ExpectationBasis =
+  | "no_basis"
+  | "architect_concept"
+  | "submitted_not_approved"
+  | "sdp_approved"
+  | "subdivision_approved";
+
+const EXPECTATION_BASES: { value: ExpectationBasis; label: string; note: string }[] = [
+  {
+    value: "no_basis",
+    label: "Nothing formal — a price they have in mind",
+    note: "Often anchored to a neighbouring sale on a site with different rights.",
+  },
+  {
+    value: "architect_concept",
+    label: "An architect's concept, not submitted",
+    note: "Shows what could theoretically fit. No planner or traffic engineer has tested it.",
+  },
+  {
+    value: "submitted_not_approved",
+    label: "Plans submitted, not yet approved",
+    note: "In the system, but the approval and its conditions are still unknown.",
+  },
+  {
+    value: "sdp_approved",
+    label: "Site Development Plan approved",
+    note: "A real, current right. The strongest form of this claim.",
+  },
+  {
+    value: "subdivision_approved",
+    label: "Subdivision plan approved",
+    note: "A real, current right, with the erven themselves consented.",
+  },
+];
+
 export default function ValuationPage() {
   const [products, setProducts] = useState<Option[]>([]);
   const [statuses, setStatuses] = useState<Option[]>([]);
@@ -97,9 +171,24 @@ export default function ValuationPage() {
   const [developableArea, setDevelopableArea] = useState("");
   const [nonDevelopableArea, setNonDevelopableArea] = useState("");
 
-  // Optional second scenario: what an architect/developer assumes is
-  // achievable, compared against the primary (approved/documented) figures.
+  /**
+   * Who is running the calculation. It changes nothing in the arithmetic and
+   * a good deal in the wording — a seller and a developer are exposed to
+   * different risks by the same number.
+   */
+  const [party, setParty] = useState<Party>("developer");
+
+  // Optional second scenario: what the seller expects the site is worth,
+  // compared against the primary (approved/documented) figures.
   const [compareAssumption, setCompareAssumption] = useState(false);
+  /** The seller's own asking price, if they have named one. */
+  const [sellerExpectation, setSellerExpectation] = useState("");
+  /**
+   * What the seller's expectation actually rests on. An architect's sketch and
+   * a submitted SDP are very different kinds of claim, and the report should
+   * not flatten them into "assumed".
+   */
+  const [expectationBasis, setExpectationBasis] = useState<ExpectationBasis>("architect_concept");
   const [assumedProductType, setAssumedProductType] = useState("");
   const [assumedDensityOverride, setAssumedDensityOverride] = useState("");
   const [assumedUnitPrice, setAssumedUnitPrice] = useState("");
@@ -110,6 +199,8 @@ export default function ValuationPage() {
   const [showMap, setShowMap] = useState(false);
   const [parcels, setParcels] = useState<SelectedParcel[]>([]);
   const [municipality, setMunicipality] = useState<Municipality | null>(null);
+  /** Lifted out of the DC panel so the printed report can carry it. */
+  const [dcResult, setDcResult] = useState<DcSummary | null>(null);
 
   const [result, setResult] = useState<QuickResult | null>(null);
   const [assumedResult, setAssumedResult] = useState<QuickResult | null>(null);
@@ -364,13 +455,39 @@ export default function ValuationPage() {
           <Image
             src="/logo.png"
             alt="Investor Property"
-            width={200}
-            height={200}
-            className="h-20 w-20 shrink-0 object-contain sm:h-24 sm:w-24"
+            width={400}
+            height={400}
+            className="h-40 w-40 shrink-0 object-contain sm:h-48 sm:w-48"
           />
         </div>
 
+        {/* Asked first, because it changes how everything below is worded. */}
         <div className="no-print mt-8 rounded-lg border border-navy/10 bg-white p-6 shadow-sm">
+          <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
+            Who is doing this calculation?
+          </label>
+          <div className="mt-2 flex gap-1 rounded-md bg-navy/5 p-1 text-xs">
+            {(Object.keys(PARTY_LABELS) as Party[]).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setParty(p)}
+                className={`flex-1 rounded px-2 py-2 transition ${
+                  party === p ? "bg-white shadow-sm font-medium text-navy" : "text-navy/50"
+                }`}
+              >
+                {PARTY_LABELS[p]}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-navy/50">
+            {party === "seller"
+              ? "The figures are the same either way. The notes on the report will speak to you as the landowner."
+              : "The figures are the same either way. The notes on the report will speak to you as the buyer."}
+          </p>
+        </div>
+
+        <div className="no-print mt-6 rounded-lg border border-navy/10 bg-white p-6 shadow-sm">
           <div className="flex items-baseline justify-between gap-4">
             <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
               Find the site
@@ -577,12 +694,26 @@ export default function ValuationPage() {
                     {basket.map((row, i) => (
                       <tr key={i} className="border-t border-navy/10">
                         <td className="p-1">
-                          <input
-                            value={row.unitType}
+                          <select
+                            value={UNIT_TYPES.includes(row.unitType as never) ? row.unitType : row.unitType ? "Other" : ""}
                             onChange={(e) => updateBasketRow(i, { unitType: e.target.value })}
-                            placeholder="e.g. 2-bed apartment"
                             className="w-full rounded border border-navy/15 px-2 py-1.5 text-sm"
-                          />
+                          >
+                            <option value="">Choose a type…</option>
+                            {UNIT_TYPES.map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                          {/* "Other" still needs somewhere to say what it is. */}
+                          {row.unitType === "Other" && (
+                            <input
+                              autoFocus
+                              value=""
+                              onChange={(e) => updateBasketRow(i, { unitType: e.target.value })}
+                              placeholder="Name the type"
+                              className="mt-1 w-full rounded border border-navy/15 px-2 py-1.5 text-sm"
+                            />
+                          )}
                         </td>
                         <td className="p-1">
                           <NumberInput
@@ -758,20 +889,51 @@ export default function ValuationPage() {
                   onChange={(e) => setCompareAssumption(e.target.checked)}
                   className="mt-0.5"
                 />
-                What does the developer want to build here?
+                What is the seller&apos;s expectation?
               </label>
 
               {compareAssumption && (
                 <div className="mt-4 space-y-4 border-t border-navy/10 pt-4">
                   <p className="text-xs leading-relaxed text-navy/50">
-                    The developer&apos;s intended use is what the land is actually worth to them.
-                    Entering it alongside the approved rights shows the gap between what the site
-                    is consented for today and what they mean to do with it — which is the gap the
-                    price has to bridge.
+                    A seller&apos;s asking price usually rests on a scheme somebody drew for them.
+                    Capturing what that scheme is, and what it is actually based on, is what turns
+                    a disagreement about price into a conversation about evidence.
                   </p>
+
                   <div>
                     <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                      The developer&apos;s intended use
+                      Their asking price (ZAR)
+                    </label>
+                    <NumberInput
+                      decimals={0}
+                      placeholder="What they want for the land"
+                      value={sellerExpectation}
+                      onChange={setSellerExpectation}
+                      className="mt-1.5 w-full rounded border border-navy/20 px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
+                      What is that based on?
+                    </label>
+                    <select
+                      value={expectationBasis}
+                      onChange={(e) => setExpectationBasis(e.target.value as ExpectationBasis)}
+                      className="mt-1.5 w-full rounded border border-navy/20 px-3 py-2 text-sm"
+                    >
+                      {EXPECTATION_BASES.map((b) => (
+                        <option key={b.value} value={b.value}>{b.label}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1.5 text-xs leading-relaxed text-navy/50">
+                      {EXPECTATION_BASES.find((b) => b.value === expectationBasis)?.note}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
+                      The scheme they have in mind
                     </label>
                     <select
                       value={assumedProductType}
@@ -797,7 +959,7 @@ export default function ValuationPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                      Selling price per unit for that use (ZAR)
+                      Selling price per unit in that scheme (ZAR)
                     </label>
                     <NumberInput
                       decimals={0}
@@ -827,37 +989,56 @@ export default function ValuationPage() {
           </div>
         )}
 
-        {result && (
-          <>
-            <div className="mt-8 flex justify-end gap-2 no-print">
-              <button
-                onClick={() => window.print()}
-                className="rounded-sm border border-navy/20 px-4 py-2 text-xs font-medium text-navy hover:bg-navy/5"
-              >
-                Download / print report (PDF)
-              </button>
-            </div>
-            <Report
-              result={result}
-              productLabel={products.find((p) => p.value === productType)?.label ?? ""}
-              statusLabel={statuses.find((s) => s.value === status)?.label ?? ""}
-              assumedResult={assumedResult}
-              assumedProductLabel={products.find((p) => p.value === assumedProductType)?.label ?? ""}
-            />
-          </>
-        )}
-
-        {/* Below the estimate, not inside it. The land figure stands on its own;
-            what the municipality charges on top is the next question, and it is
-            the one that moves a deal from "worth it" to "not". */}
+        {/* The development charges panel sits above the report so that whatever
+            has been calculated by the time the report is printed is in it. */}
         <DevelopmentCharges
           className="no-print mt-6"
           municipalityCode={municipality?.code}
           municipalityName={municipality?.name}
           suggestedUnits={result?.opportunities}
+          onResult={setDcResult}
         />
 
+        {result && (
+          <Report
+            result={result}
+            party={party}
+            productLabel={products.find((p) => p.value === productType)?.label ?? ""}
+            statusLabel={statuses.find((s) => s.value === status)?.label ?? ""}
+            assumedResult={assumedResult}
+            assumedProductLabel={products.find((p) => p.value === assumedProductType)?.label ?? ""}
+            sellerExpectation={Number(sellerExpectation) || undefined}
+            expectationBasisLabel={
+              EXPECTATION_BASES.find((b) => b.value === expectationBasis)?.label ?? ""
+            }
+            dc={dcResult}
+            parcels={parcels}
+            municipalityName={municipality?.name}
+          />
+        )}
+
+        {result && (
+          <div className="no-print mt-6 flex justify-center">
+            <button
+              onClick={() => window.print()}
+              className="rounded-sm bg-navy px-8 py-3 text-sm font-medium text-shell transition hover:bg-navy-deep"
+            >
+              Download / print report (PDF)
+            </button>
+          </div>
+        )}
+
+        <ContactCta context="Desktop Land Estimate" />
+
         <p className="no-print mx-auto mt-8 max-w-2xl text-center text-xs leading-relaxed text-navy/40">
+          {COMPLIMENTARY_NOTE.replace(" and use of the tool is subject to the terms of use.", ", and use of the tool is subject to the ")}
+          <Link href="/terms" className="underline underline-offset-2 hover:text-navy/70">
+            terms of use
+          </Link>
+          .
+        </p>
+
+        <p className="no-print mx-auto mt-3 max-w-2xl text-center text-xs leading-relaxed text-navy/40">
           This is an estimate, not a valuation — only a registered professional valuer may
           provide a valuation. It is a starting point for discussion between buyer and seller,
           not a substitute for a full feasibility study, a survey, or professional advice.
@@ -889,16 +1070,28 @@ export default function ValuationPage() {
  */
 function Report({
   result,
+  party,
   productLabel,
   statusLabel,
   assumedResult,
   assumedProductLabel,
+  sellerExpectation,
+  expectationBasisLabel,
+  dc,
+  parcels,
+  municipalityName,
 }: {
   result: QuickResult;
+  party: Party;
   productLabel: string;
   statusLabel: string;
   assumedResult: QuickResult | null;
   assumedProductLabel: string;
+  sellerExpectation?: number;
+  expectationBasisLabel: string;
+  dc: DcSummary | null;
+  parcels: SelectedParcel[];
+  municipalityName?: string;
 }) {
   const today = new Date().toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" });
   const gapValue = assumedResult ? assumedResult.landValue - result.landValue : 0;
@@ -908,24 +1101,61 @@ function Report({
     <div className="print-sheet mt-8 overflow-hidden rounded-lg border border-navy/10 bg-white shadow-sm">
       <div className="print-pad p-6">
         <div className="flex items-center justify-between border-b border-navy/10 pb-4">
-          <div className="flex items-center gap-3">
-            <Image src="/logo.png" alt="Investor Property" width={200} height={200} className="h-14 w-14 object-contain" />
+          <div className="flex items-center gap-4">
+            {/* Linked so a shared PDF still leads somewhere. */}
+            <a href="https://investorproperty.co.za" target="_blank" rel="noopener noreferrer">
+              <Image
+                src="/logo.png"
+                alt="Investor Property"
+                width={400}
+                height={400}
+                className="h-28 w-28 object-contain"
+              />
+            </a>
             <div>
-              <div className="text-sm font-semibold uppercase tracking-wide text-navy">Investor Property</div>
+              <div className="text-base font-semibold uppercase tracking-wide text-navy">
+                <a href="https://investorproperty.co.za" target="_blank" rel="noopener noreferrer">
+                  Investor Property
+                </a>
+              </div>
               <div className="text-xs text-navy/50">Desktop Land Estimate</div>
+              <div className="mt-0.5 text-[11px] text-navy/40">
+                investorproperty.co.za
+              </div>
             </div>
           </div>
-          <div className="text-right text-xs text-navy/50">{today}</div>
+          <div className="text-right text-xs text-navy/50">
+            <div>{today}</div>
+            <div className="mt-1">
+              Prepared for the {party === "seller" ? "landowner" : "developer"}
+            </div>
+          </div>
         </div>
         <div className="mt-4 h-1 rule-gold" />
 
+        {/* Which ground this report is about. Printed, because a report that
+            does not name its site is unusable a week later. */}
+        {(parcels.length > 0 || municipalityName) && (
+          <div className="mt-5 rounded border border-navy/10 bg-navy/[0.02] px-4 py-3 text-xs">
+            <div className="text-[10px] uppercase tracking-wide text-navy/40">The site</div>
+            <div className="mt-1 space-y-0.5 text-navy/70">
+              {parcels.map((p) => (
+                <div key={p.key}>
+                  <span className="font-medium text-navy">{p.label}</span> ·{" "}
+                  {fmt(p.areaM2)} m² · LPI {p.lpi || "—"}
+                </div>
+              ))}
+              {municipalityName && <div className="text-navy/50">{municipalityName}</div>}
+            </div>
+          </div>
+        )}
+
         {assumedResult ? (
           <>
-            {/* The developer's intended use leads. It is what the land is
-                actually worth to the buyer in front of you; the approved
-                rights are the floor under it, not the headline. */}
+            {/* The scheme actually contemplated leads; the rights the site
+                carries today are the floor under it. */}
             <p className="mt-6 text-xs uppercase tracking-[0.2em] text-gold-deep">
-              Estimated land value — the developer&apos;s intended use
+              Estimated land value — the scheme contemplated
             </p>
             <p className="mt-2 text-4xl font-light text-gold-gradient">
               {rand(assumedResult.landValue)}
@@ -937,11 +1167,16 @@ function Report({
             <div className="mt-5 grid grid-cols-2 gap-4">
               <div className="rounded border border-gold/40 bg-gold/5 p-4">
                 <p className="text-[11px] uppercase tracking-wide text-gold-deep">
-                  Developer&apos;s intended use
+                  The scheme contemplated
                 </p>
                 <p className="mt-1 text-2xl font-light text-navy">{rand(assumedResult.landValue)}</p>
                 <p className="mt-1 text-xs text-navy/50">{assumedProductLabel}</p>
                 <p className="text-xs text-navy/50">{fmt(assumedResult.opportunities)} opportunities</p>
+                {expectationBasisLabel && (
+                  <p className="mt-2 border-t border-gold/20 pt-2 text-[11px] text-navy/50">
+                    Based on: {expectationBasisLabel}
+                  </p>
+                )}
               </div>
               <div className="rounded border border-navy/10 p-4">
                 <p className="text-[11px] uppercase tracking-wide text-navy/40">
@@ -957,11 +1192,38 @@ function Report({
               Gap: <strong>{rand(Math.abs(gapValue))}</strong> ({gapPct >= 0 ? "+" : ""}
               {gapPct.toFixed(0)}%)
               {gapValue > 0
-                ? " — the intended use is worth more than the rights the site carries today. That difference is what the rezoning or departure has to deliver, and it is the part that carries the planning risk."
+                ? " — the scheme contemplated is worth more than the rights the site carries today. That difference is what a rezoning or departure still has to deliver, and it is where the planning risk sits."
                 : gapValue < 0
-                  ? " — the intended use is worth less than the approved rights. The site may already be consented for something better."
-                  : " — the intended use and the approved rights value the same."}
+                  ? " — the scheme contemplated is worth less than the approved rights. The site may already be consented for something better."
+                  : " — the scheme contemplated and the approved rights value the same."}
             </div>
+
+            {/* The asking price against both figures — the actual negotiation. */}
+            {sellerExpectation !== undefined && sellerExpectation > 0 && (
+              <div className="mt-3 rounded border border-navy/15 px-4 py-3 text-sm">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-[11px] uppercase tracking-wide text-navy/40">
+                    Seller&apos;s asking price
+                  </span>
+                  <span className="text-xl font-light text-navy">{rand(sellerExpectation)}</span>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-navy/60">
+                  That is{" "}
+                  <strong className="text-navy">
+                    {rand(Math.abs(sellerExpectation - assumedResult.landValue))}
+                  </strong>{" "}
+                  {sellerExpectation > assumedResult.landValue ? "above" : "below"} what this
+                  estimate carries for the scheme contemplated, and{" "}
+                  <strong className="text-navy">
+                    {rand(Math.abs(sellerExpectation - result.landValue))}
+                  </strong>{" "}
+                  {sellerExpectation > result.landValue ? "above" : "below"} what the approved
+                  rights carry.
+                  {sellerExpectation > assumedResult.landValue &&
+                    " Closing that gap means either the rights improving, the selling prices improving, or the expectation moving."}
+                </p>
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -1117,12 +1379,137 @@ function Report({
           </p>
         )}
 
-        <p className="mx-auto mt-6 max-w-2xl border-t border-navy/10 pt-4 text-center text-[11px] leading-relaxed text-navy/40">
+        {/* What the municipality charges on top. Only printed when it has
+            actually been calculated — an empty section in a PDF is worse than
+            no section. */}
+        {dc && (
+          <>
+            <h2 className="mt-8 border-t border-navy/10 pt-6 text-sm font-medium uppercase tracking-wide text-navy/60">
+              Development charges — {dc.municipalityName}
+            </h2>
+            <table className="mt-3 w-full text-xs">
+              <thead>
+                <tr className="border-b border-navy/10 text-left text-[10px] uppercase tracking-wide text-navy/40">
+                  <th className="py-2 font-medium">Land use</th>
+                  <th className="py-2 text-right font-medium">Charged on</th>
+                  <th className="py-2 text-right font-medium">Rate</th>
+                  <th className="py-2 text-right font-medium">Charge</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dc.lines.map((l) => (
+                  <tr key={l.code} className="border-b border-navy/5">
+                    <td className="py-2 pr-2">
+                      <span className="font-medium text-navy">{l.code}</span>
+                      <span className="ml-1.5 text-navy/50">{l.label}</span>
+                    </td>
+                    <td className="py-2 text-right tabular-nums">{fmt(l.additionalDemand)}</td>
+                    <td className="py-2 text-right tabular-nums text-navy/60">
+                      {rand(l.ratePerUnit)}
+                    </td>
+                    <td className="py-2 text-right tabular-nums">{rand(l.charge)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="text-navy/70">
+                <tr>
+                  <td colSpan={3} className="py-1.5 text-right">Bulk services</td>
+                  <td className="py-1.5 text-right tabular-nums">{rand(dc.bulkServices)}</td>
+                </tr>
+                {dc.linkServices > 0 && (
+                  <tr>
+                    <td colSpan={3} className="py-1.5 text-right">Link services</td>
+                    <td className="py-1.5 text-right tabular-nums">{rand(dc.linkServices)}</td>
+                  </tr>
+                )}
+                <tr>
+                  <td colSpan={3} className="py-1.5 text-right">VAT</td>
+                  <td className="py-1.5 text-right tabular-nums">{rand(dc.vat)}</td>
+                </tr>
+                <tr className="border-t border-navy/20 text-sm font-medium text-navy">
+                  <td colSpan={3} className="py-2.5 text-right">Total development charges</td>
+                  <td className="py-2.5 text-right tabular-nums">{rand(dc.total)}</td>
+                </tr>
+              </tfoot>
+            </table>
+            <p className="mt-2 text-[11px] leading-relaxed text-navy/45">
+              Charged on the increase in demand — existing rights are credited. Rates are the{" "}
+              {dc.rateYear} figures{dc.projectedRates ? ", projected forward by the CPAF" : ""} and
+              escalate every 1 July.
+              {dc.linkServices === 0 &&
+                " Link services are not included; the City does not derive them."}
+            </p>
+          </>
+        )}
+
+        {/* Morné's own counsel, printed with every report rather than given
+            verbally to whoever happens to be in the room. */}
+        <h2 className="mt-8 border-t border-navy/10 pt-6 text-sm font-medium uppercase tracking-wide text-navy/60">
+          Before you rely on this
+        </h2>
+        <div className="mt-3 space-y-3">
+          {dueDiligenceNotes(party).map((n) => (
+            <div key={n.heading}>
+              <div className="text-xs font-semibold text-navy">{n.heading}</div>
+              <p className="mt-0.5 text-xs leading-relaxed text-navy/65">{n.body}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Structure decides who can transact at all, which matters most to
+            the party who usually only knows about the first column. */}
+        <h2 className="mt-8 border-t border-navy/10 pt-6 text-sm font-medium uppercase tracking-wide text-navy/60">
+          How the deal can be structured
+        </h2>
+        <p className="mt-2 text-xs leading-relaxed text-navy/55">
+          Price is only half the question. How a deal is structured decides how much risk each side
+          carries, and how many buyers can transact at all.
+        </p>
+        <table className="mt-3 w-full text-[11px]">
+          <thead>
+            <tr className="border-b border-navy/10 text-left uppercase tracking-wide text-navy/40">
+              <th className="py-2 font-medium">&nbsp;</th>
+              {DEAL_STRUCTURES.map((d) => (
+                <th key={d.key} className="py-2 font-medium text-navy/60">{d.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="align-top text-navy/70">
+            {(
+              [
+                ["Relationship", "relationship"],
+                ["Land ownership", "ownership"],
+                ["Upfront capital", "upfrontCapital"],
+                ["Risk", "risk"],
+                ["Control", "control"],
+                ["Profit", "profit"],
+              ] as const
+            ).map(([label, key]) => (
+              <tr key={key} className="border-b border-navy/5">
+                <td className="py-2 pr-3 font-medium text-navy/50">{label}</td>
+                {DEAL_STRUCTURES.map((d) => (
+                  <td key={d.key} className="py-2 pr-3 leading-relaxed">{d.rows[key]}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <p className="mt-3 rounded bg-amber-50 px-3 py-2.5 text-[11px] leading-relaxed text-amber-900">
+          {CASH_CEILING_NOTE}
+        </p>
+
+        <p className="mx-auto mt-8 max-w-2xl border-t border-navy/10 pt-4 text-center text-[11px] leading-relaxed text-navy/40">
           Prepared by Investor Property as a discussion starting point for both parties. This is
           an estimate, not a valuation — only a registered professional valuer may provide a
           valuation. It is not a substitute for a full feasibility study, a land survey, or
           professional advice. Figures are calibrated assumptions and will not match every site
-          exactly.
+          exactly. No information about this property has been stored.
+        </p>
+        <p className="mt-2 text-center text-[10px] leading-relaxed text-navy/35">
+          © {new Date().getFullYear()} Investor Property. All rights reserved. The methodology and
+          assumptions in this report are proprietary to Investor Property and are provided subject
+          to the terms of use at investorproperty.co.za/terms. This report may be shared only
+          complete and unaltered.
         </p>
         <p className="mt-2 text-center text-[10px] text-navy/30">powered by Propello</p>
       </div>
