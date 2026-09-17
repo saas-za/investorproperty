@@ -13,6 +13,8 @@ export interface SelectedParcel {
   province: string;
   registrationDivision: string;
   rings: [number, number][][];
+  /** Rough centre, cheap to store long after the full boundary is discarded. */
+  centroid: { lat: number; lng: number };
 }
 
 export interface Municipality {

@@ -56,6 +56,54 @@ export interface AttachedParcel {
   areaM2: number;
   province: string;
   registrationDivision: string;
+  /**
+   * Rough centre point, kept even though the full boundary deliberately
+   * isn't (a stored boundary goes stale on subdivision; a centroid barely
+   * moves). Lets the land-opportunity email re-derive a fresh, current
+   * boundary at send time rather than mailing out a stale one.
+   */
+  centroid: { lat: number; lng: number };
+}
+
+export type Language = "en" | "af";
+
+/**
+ * A developer contact, in the shape Morné's own land spreadsheet already
+ * uses — a name, a language (his email is bilingual and sends whichever
+ * matches), and up to two contacts.
+ */
+export interface Developer {
+  id: string;
+  name: string;
+  language: Language;
+  contact1Name: string;
+  contact1Email: string;
+  contact2Name?: string;
+  contact2Email?: string;
+}
+
+/**
+ * The status ladder his sheet's conditional formatting already tracks per
+ * developer per property. "Mail" isn't a stored state here — it's the
+ * button; pressing it sends and the state becomes "Mailed" in the same
+ * action, rather than "Mail" sitting in a cell waiting for a trigger to
+ * notice it changed.
+ */
+export type DeveloperInterest = "Not mailed" | "Mailed" | "Interested" | "Not interested";
+
+export const DEVELOPER_INTEREST_STYLES: Record<DeveloperInterest, string> = {
+  "Not mailed": "bg-red-50 text-red-700 ring-red-200",
+  Mailed: "bg-amber-50 text-amber-800 ring-amber-200",
+  Interested: "bg-emerald-50 text-emerald-800 ring-emerald-200",
+  "Not interested": "bg-slate-100 text-slate-500 ring-slate-300",
+};
+
+/** One cell of the developer × opportunity matrix his "Developers" tab is. */
+export interface LandDeveloperInterest {
+  landId: string;
+  developerId: string;
+  status: DeveloperInterest;
+  mailedAt?: string;
 }
 
 export interface LandOpportunity {

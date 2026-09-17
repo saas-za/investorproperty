@@ -1,6 +1,25 @@
-import type { BrokerDeal, CrmLead, LandOpportunity, Property } from "./types";
+import type { BrokerDeal, CrmLead, Developer, LandDeveloperInterest, LandOpportunity, Property } from "./types";
 
 export const TODAY = "2026-09-17";
+
+/**
+ * Demo contacts, not Morné's real developer list — his actual list (~75
+ * names, real emails, pasted from his working spreadsheet while reading it)
+ * stays where it is and is never seeded into this repo. He can replace these
+ * with real developers through the CRM itself once the "add a developer"
+ * step exists.
+ */
+export const developers: Developer[] = [
+  { id: "d1", name: "Century Property Development", language: "en", contact1Name: "Mark", contact1Email: "mark@example-century.co.za", contact2Name: "George", contact2Email: "george@example-century.co.za" },
+  { id: "d2", name: "Arcis Property Development", language: "af", contact1Name: "Wian", contact1Email: "wian@example-arcis.co.za" },
+  { id: "d3", name: "Nova Build", language: "en", contact1Name: "Jason", contact1Email: "jason@example-novabuild.co.za" },
+  { id: "d4", name: "Remey Developments", language: "af", contact1Name: "Johan", contact1Email: "johan@example-remey.co.za" },
+];
+
+export const landDeveloperInterest: LandDeveloperInterest[] = [
+  { landId: "l1", developerId: "d4", status: "Interested", mailedAt: "2026-08-20" },
+  { landId: "l4", developerId: "d1", status: "Mailed", mailedAt: "2026-09-01" },
+];
 
 export const properties: Property[] = [
   {

@@ -101,6 +101,15 @@ export interface Parcel {
   schemeName?: string;
   /** Boundary as [lat, lng] rings, ready for Leaflet without conversion. */
   rings: [number, number][][];
+  /**
+   * A rough centre point, cheap to store long-term where the full boundary
+   * is deliberately not (see the CRM land page's own note on why boundaries
+   * go stale). A subdivision moves a parcel's edges, not roughly where its
+   * middle sits, so a stored centroid stays a good-enough starting point for
+   * re-deriving fresh geometry later — see `lookupParcelByPoint` in
+   * `land-email.ts` for where that happens.
+   */
+  centroid: { lat: number; lng: number };
 }
 
 export interface Municipality {
@@ -269,9 +278,27 @@ async function findParcel(lng: number, lat: number): Promise<Parcel | null> {
       registrationDivision: str(row.MIN_REGION) || str(row.MAJ_REGION),
       schemeName: str(row.SS_NAME) || undefined,
       rings: toLeafletRings(row.__rings),
+      centroid: centroidOf(row.__rings),
     };
   }
   return null;
+}
+
+/**
+ * Plain average of the outer ring's vertices — good enough for "roughly the
+ * middle of this parcel", which is all a stored centroid needs to be for
+ * re-deriving fresh geometry later. Not the point a surveyor would use.
+ */
+function centroidOf(rings: unknown): { lat: number; lng: number } {
+  const outer = Array.isArray(rings) ? (rings as number[][][])[0] : undefined;
+  if (!outer || outer.length === 0) return { lat: 0, lng: 0 };
+  let sumLat = 0;
+  let sumLng = 0;
+  for (const [lng, lat] of outer) {
+    sumLat += lat;
+    sumLng += lng;
+  }
+  return { lat: sumLat / outer.length, lng: sumLng / outer.length };
 }
 
 async function findEthekwiniZoning(lng: number, lat: number): Promise<EthekwiniZoning | null> {

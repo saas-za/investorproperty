@@ -1,11 +1,17 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import ParcelMap, { type Municipality, type SelectedParcel } from "@/components/ParcelMap";
-import { landOpportunities as seedLand } from "@/lib/crm/seed";
 import {
+  developers,
+  landDeveloperInterest as seedInterest,
+  landOpportunities as seedLand,
+} from "@/lib/crm/seed";
+import {
+  DEVELOPER_INTEREST_STYLES,
   LAND_STAGE_STYLES,
   type AttachedParcel,
+  type LandDeveloperInterest,
   type LandOpportunity,
   type LandStage,
 } from "@/lib/crm/types";
@@ -24,6 +30,7 @@ function toAttached(p: SelectedParcel): AttachedParcel {
     areaM2: p.areaM2,
     province: p.province,
     registrationDivision: p.registrationDivision,
+    centroid: p.centroid,
   };
 }
 
@@ -57,6 +64,75 @@ export default function DevelopmentLandPage() {
   const [picking, setPicking] = useState<string | null>(null);
   const [draft, setDraft] = useState<SelectedParcel[]>([]);
   const [draftMuni, setDraftMuni] = useState<Municipality | null>(null);
+  const [interest, setInterest] = useState<LandDeveloperInterest[]>(seedInterest);
+  const [sendingTo, setSendingTo] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  async function sendToDeveloper(land: LandOpportunity, developerId: string) {
+    const dev = developers.find((d) => d.id === developerId);
+    if (!dev) return;
+    const key = `${land.id}:${developerId}`;
+    setSendingTo(key);
+    try {
+      const res = await fetch("/api/land-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          property: {
+            name: land.name,
+            location: land.location,
+            askingPrice: land.askingPrice,
+            erfNo: land.erfNo,
+            lpiCode: land.lpiCode,
+            areaM2: land.areaHa * 10_000,
+            currentZoning: land.currentZoning,
+            proposedZoning: land.proposedZoning,
+            description: land.notes,
+            // The stored centroids, not boundaries — the send route
+            // re-derives each parcel's current shape from the cadastre
+            // right before generating the map.
+            centroids: (land.parcels ?? []).map((p) => p.centroid),
+          },
+          recipient: {
+            name: dev.name,
+            language: dev.language,
+            emails: [dev.contact1Email, dev.contact2Email].filter((e): e is string => Boolean(e)),
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        setToast(data.error ?? "Could not send that email");
+        return;
+      }
+      setInterest((prev) => {
+        const existing = prev.find((r) => r.landId === land.id && r.developerId === developerId);
+        const next = { landId: land.id, developerId, status: "Mailed" as const, mailedAt: today() };
+        return existing
+          ? prev.map((r) => (r === existing ? next : r))
+          : [...prev, next];
+      });
+      setToast(
+        data.simulated
+          ? `Simulated — no RESEND_API_KEY configured. Would have mailed ${dev.name}.`
+          : `Mailed ${dev.name}`,
+      );
+    } catch {
+      setToast("Could not reach the send endpoint");
+    } finally {
+      setSendingTo(null);
+    }
+  }
+
+  function today() {
+    return new Date().toISOString().slice(0, 10);
+  }
 
   function setStage(id: string, stage: LandStage) {
     setRows((prev) => prev.map((l) => (l.id === id ? { ...l, stage } : l)));
@@ -257,6 +333,45 @@ export default function DevelopmentLandPage() {
                             <div className="mt-1">{l.notes ?? "—"}</div>
                           </div>
                         </div>
+
+                        {/* The part that was missing entirely — a site could
+                            be added and then nothing further done with it. */}
+                        <div className="mt-4 border-t border-navy/10 pt-4">
+                          <div className="text-xs uppercase tracking-wide text-navy/40">
+                            Send to developer
+                          </div>
+                          <div className="mt-2 space-y-1.5">
+                            {developers.map((dev) => {
+                              const rec = interest.find(
+                                (r) => r.landId === l.id && r.developerId === dev.id,
+                              );
+                              const status = rec?.status ?? "Not mailed";
+                              const key = `${l.id}:${dev.id}`;
+                              return (
+                                <div key={dev.id} className="flex items-center gap-2 text-xs">
+                                  <span className="w-48 shrink-0 text-navy">{dev.name}</span>
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 ring-1 ${DEVELOPER_INTEREST_STYLES[status]}`}
+                                  >
+                                    {status}
+                                    {rec?.mailedAt && status === "Mailed" ? ` · ${rec.mailedAt}` : ""}
+                                  </span>
+                                  <button
+                                    onClick={() => sendToDeveloper(l, dev.id)}
+                                    disabled={sendingTo === key}
+                                    className="ml-auto rounded bg-navy px-2.5 py-1 text-[11px] font-medium text-shell hover:bg-navy-deep disabled:opacity-50"
+                                  >
+                                    {sendingTo === key
+                                      ? "Sending…"
+                                      : status === "Not mailed"
+                                        ? "Mail"
+                                        : "Re-send"}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -346,6 +461,12 @@ export default function DevelopmentLandPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-navy px-5 py-3 text-sm text-shell shadow-lg">
+          {toast}
         </div>
       )}
     </div>
