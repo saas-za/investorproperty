@@ -74,3 +74,35 @@ body {
   left: 0;
   z-index: 10;
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  /* Zero margins suppress the browser's own header/footer (URL, date, page
+     number) in Chrome and Edge — the report supplies its own. */
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
+
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  /* A report built on colour (status, workings) needs those to survive
+     print, which browsers otherwise strip by default. */
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .print-sheet {
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+}

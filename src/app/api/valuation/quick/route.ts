@@ -57,22 +57,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Expected a JSON body" }, { status: 400 });
   }
 
-  if (
-    typeof body.grossHectares !== "number" ||
-    typeof body.averageUnitPrice !== "number" ||
-    typeof body.productType !== "string" ||
-    typeof body.status !== "string"
-  ) {
+  const hasAbsoluteSplit =
+    typeof body.developableHectares === "number" && typeof body.nonDevelopableHectares === "number";
+
+  if (!hasAbsoluteSplit && typeof body.grossHectares !== "number") {
     return NextResponse.json(
-      { error: "grossHectares, averageUnitPrice, productType and status are required" },
+      { error: "Supply grossHectares, or both developableHectares and nonDevelopableHectares" },
+      { status: 400 },
+    );
+  }
+  if (typeof body.productType !== "string" || typeof body.status !== "string") {
+    return NextResponse.json({ error: "productType and status are required" }, { status: 400 });
+  }
+  if (body.productType === "basket_of_rights") {
+    if (!Array.isArray(body.basket) || body.basket.length === 0) {
+      return NextResponse.json(
+        { error: "basket_of_rights requires at least one row in basket" },
+        { status: 400 },
+      );
+    }
+  } else if (typeof body.averageUnitPrice !== "number") {
+    return NextResponse.json(
+      { error: "averageUnitPrice is required unless productType is basket_of_rights" },
       { status: 400 },
     );
   }
 
   try {
     const result = calculateQuickValuation({
-      grossHectares: body.grossHectares,
-      averageUnitPrice: body.averageUnitPrice,
+      grossHectares: typeof body.grossHectares === "number" ? body.grossHectares : undefined,
+      developableHectares: hasAbsoluteSplit ? body.developableHectares : undefined,
+      nonDevelopableHectares: hasAbsoluteSplit ? body.nonDevelopableHectares : undefined,
+      averageUnitPrice: typeof body.averageUnitPrice === "number" ? body.averageUnitPrice : undefined,
+      basket: Array.isArray(body.basket) ? body.basket : undefined,
       productType: body.productType as ProductType,
       status: body.status as LandStatus,
       density: typeof body.density === "number" ? body.density : undefined,
