@@ -5,6 +5,8 @@ import type { Map as LeafletMap, Polygon as LeafletPolygon } from "leaflet";
 
 export interface SelectedParcel {
   key: string;
+  /** Derived LPI code, matching the form the land spreadsheet already uses. */
+  lpi: string;
   label: string;
   areaM2: number;
   areaHa: number;

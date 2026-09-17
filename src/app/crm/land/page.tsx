@@ -19,11 +19,35 @@ const rand = (n?: number) => (n ? `R${n.toLocaleString("en-ZA")}` : "—");
 function toAttached(p: SelectedParcel): AttachedParcel {
   return {
     key: p.key,
+    lpi: p.lpi,
     label: p.label,
     areaM2: p.areaM2,
     province: p.province,
     registrationDivision: p.registrationDivision,
   };
+}
+
+/**
+ * Which existing opportunities already hold any of these parcels.
+ *
+ * Matched on the Surveyor-General parcel key rather than on name, area or erf
+ * number. Names get typed differently every time, areas come from whatever the
+ * seller said, and erf numbers repeat across registration divisions — the
+ * parcel key is the only thing that identifies a piece of ground uniquely.
+ */
+function findDuplicates(
+  rows: LandOpportunity[],
+  parcels: AttachedParcel[],
+  ignoreId?: string,
+) {
+  const keys = new Set(parcels.map((p) => p.key));
+  return rows
+    .filter((l) => l.id !== ignoreId)
+    .map((l) => ({
+      row: l,
+      shared: (l.parcels ?? []).filter((p) => keys.has(p.key)),
+    }))
+    .filter((m) => m.shared.length > 0);
 }
 
 export default function DevelopmentLandPage() {
@@ -48,6 +72,10 @@ export default function DevelopmentLandPage() {
     setDraftMuni(null);
   }
 
+  const draftDuplicates = picking
+    ? findDuplicates(rows, draft.map(toAttached), picking === "new" ? undefined : picking)
+    : [];
+
   function applyPicker() {
     if (!picking) return;
     const parcels = draft.map(toAttached);
@@ -62,6 +90,7 @@ export default function DevelopmentLandPage() {
           name: first ? first.label : "New land opportunity",
           location: draftMuni?.name ?? first?.registrationDivision ?? "",
           erfNo: first?.label.replace(/^Erf /, ""),
+          lpiCode: first?.lpi || undefined,
           areaHa: Number((totalM2 / 10_000).toFixed(4)),
           currentZoning: "Unconfirmed",
           stage: "Sourcing",
@@ -81,6 +110,7 @@ export default function DevelopmentLandPage() {
                 parcels,
                 areaHa: totalM2 > 0 ? Number((totalM2 / 10_000).toFixed(4)) : l.areaHa,
                 erfNo: parcels[0]?.label.replace(/^Erf /, "") ?? l.erfNo,
+                lpiCode: parcels[0]?.lpi || l.lpiCode,
                 municipality: draftMuni?.name ?? l.municipality,
                 municipalityCode: draftMuni?.code ?? l.municipalityCode,
               },
@@ -269,6 +299,31 @@ export default function DevelopmentLandPage() {
               }}
             />
 
+            {/* Caught before the row is created, not after. The same piece of
+                ground arriving twice under two different names is the thing
+                the parcel key exists to prevent. */}
+            {draftDuplicates.length > 0 && (
+              <div className="mt-4 rounded border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-900">
+                <p className="font-medium">
+                  {draftDuplicates.length === 1
+                    ? "This land is already on the board."
+                    : "This land is already on the board more than once."}
+                </p>
+                <ul className="mt-1.5 space-y-0.5">
+                  {draftDuplicates.map((m) => (
+                    <li key={m.row.id}>
+                      <span className="font-medium">{m.row.name}</span> ({m.row.stage}) — shares{" "}
+                      {m.shared.map((p) => p.label).join(", ")}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-1.5 text-amber-800/80">
+                  Matched on the Surveyor-General parcel key, so this holds even where the name,
+                  area or erf number was captured differently.
+                </p>
+              </div>
+            )}
+
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={() => setPicking(null)}
@@ -279,11 +334,15 @@ export default function DevelopmentLandPage() {
               <button
                 onClick={applyPicker}
                 disabled={draft.length === 0}
-                className="rounded bg-navy px-4 py-2 text-sm text-shell disabled:cursor-not-allowed disabled:opacity-40"
+                className={`rounded px-4 py-2 text-sm text-shell disabled:cursor-not-allowed disabled:opacity-40 ${
+                  draftDuplicates.length > 0 ? "bg-amber-600 hover:bg-amber-700" : "bg-navy"
+                }`}
               >
-                {picking === "new"
-                  ? `Create from ${draft.length} parcel${draft.length === 1 ? "" : "s"}`
-                  : "Attach to this opportunity"}
+                {draftDuplicates.length > 0
+                  ? "Add anyway"
+                  : picking === "new"
+                    ? `Create from ${draft.length} parcel${draft.length === 1 ? "" : "s"}`
+                    : "Attach to this opportunity"}
               </button>
             </div>
           </div>

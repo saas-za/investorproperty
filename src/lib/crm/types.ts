@@ -49,6 +49,8 @@ export type LandStage =
 export interface AttachedParcel {
   /** Surveyor-General parcel key — the stable identifier, not the erf number. */
   key: string;
+  /** The 21-character LPI code, same form as the land spreadsheet uses. */
+  lpi: string;
   /** "Erf 4651" or "Farm 512 Portion 3". */
   label: string;
   areaM2: number;

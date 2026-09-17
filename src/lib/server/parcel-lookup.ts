@@ -61,6 +61,12 @@ export type ParcelKind = (typeof PARCEL_LAYERS)[number]["kind"];
 export interface Parcel {
   /** Surveyor-General's 26-character parcel key — the stable identifier. */
   key: string;
+  /**
+   * The 21-character LPI code, in the same form Morné's land spreadsheet
+   * already uses (`C06700000000021400012`). Derived rather than looked up —
+   * see `lpiCode()` for the composition and how it was verified.
+   */
+  lpi: string;
   kind: ParcelKind;
   /** Erf 4651, or Farm 512 Portion 3. Built for reading, not for matching. */
   label: string;
@@ -158,6 +164,39 @@ function describe(kind: ParcelKind, parcelNo: number | null, portion: number | n
   return portion ? `${base} Portion ${portion}` : base;
 }
 
+/**
+ * Build the LPI code the way the land spreadsheet already writes it:
+ *
+ *   region code (8) + parcel number (8, zero-padded) + portion (5, zero-padded)
+ *
+ * Verified against two rows of Morné's own sheet, from opposite ends of the
+ * cadastre:
+ *
+ *   Eikezicht, a farm portion — sheet says C06700000000021400012.
+ *     MAJ_CODE C0670000 + parcel 214 → 00000214 + portion 12 → 00012. Matches.
+ *   44 Commercial, an urban erf — sheet says C01600070017765100000.
+ *     MIN_CODE C0160007 + parcel 177651 → 00177651 + portion 0 → 00000. Matches.
+ *
+ * Note which code each uses. Urban erven carry a MIN_CODE and the sheet uses
+ * it; farm portions have no MIN_CODE at all, and the sheet falls back to
+ * MAJ_CODE. Getting that the wrong way round produces a plausible-looking code
+ * that matches nothing, which is worse than producing none.
+ */
+function lpiCode(
+  majCode: string,
+  minCode: string,
+  parcelNo: number | null,
+  portion: number | null,
+): string {
+  const region = minCode || majCode;
+  if (!region || parcelNo === null) return "";
+  return (
+    region +
+    String(parcelNo).padStart(8, "0") +
+    String(portion ?? 0).padStart(5, "0")
+  );
+}
+
 /** Esri rings are [lng, lat]; Leaflet wants [lat, lng]. */
 function toLeafletRings(rings: unknown): [number, number][][] {
   if (!Array.isArray(rings)) return [];
@@ -195,6 +234,7 @@ async function findParcel(lng: number, lat: number): Promise<Parcel | null> {
 
     return {
       key: str(row.PRCL_KEY),
+      lpi: lpiCode(str(row.MAJ_CODE), str(row.MIN_CODE), parcelNo, portion),
       kind: layer.kind,
       label: describe(layer.kind, parcelNo, portion),
       parcelNo,
