@@ -61,10 +61,10 @@ export default function Home() {
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <a
-                href="/sign-up"
+                href="/valuation"
                 className="rounded-sm bg-gold px-6 py-3 text-sm font-medium text-navy-deep transition hover:bg-gold-light"
               >
-                Create a free account
+                Try the calculator
               </a>
               <a
                 href="/sign-in"
