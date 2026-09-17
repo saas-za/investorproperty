@@ -36,7 +36,25 @@ const PARCEL_LAYERS = [
 
 const MUNICIPALITY_LAYER = 1;
 
-const TIMEOUT_MS = 12_000;
+/**
+ * Farm portions and parent farms run to tens of square kilometres and their
+ * boundaries carry far more vertices than an erf, so the geometry takes real
+ * time to come back. Undeveloped land is exactly the case this tool is for, so
+ * the timeout has to suit the slowest layer, not the fastest.
+ */
+const TIMEOUT_MS = 25_000;
+
+/**
+ * Simplify returned boundaries to roughly this many degrees (~2 m). A farm
+ * boundary drawn to the centimetre is megabytes of JSON that render to the
+ * same handful of pixels. Areas are read from GEOM_AREA, never measured off
+ * the drawn polygon, so simplifying costs nothing that is used.
+ *
+ * Kept tight rather than generous: at ~10 m a small urban erf loses corners
+ * visibly, and the outline sitting wrong over satellite imagery undermines
+ * confidence in a figure that is in fact exact.
+ */
+const GEOMETRY_TOLERANCE = 0.00002;
 
 export type ParcelKind = (typeof PARCEL_LAYERS)[number]["kind"];
 
@@ -83,7 +101,6 @@ async function arcgis(
   layer: number,
   lng: number,
   lat: number,
-  outFields: string,
   returnGeometry: boolean,
 ): Promise<Record<string, unknown>[]> {
   const params = new URLSearchParams({
@@ -91,9 +108,16 @@ async function arcgis(
     geometryType: "esriGeometryPoint",
     inSR: "4326",
     spatialRel: "esriSpatialRelIntersects",
-    outFields,
+    // Deliberately "*" rather than a named list. The four parcel layers do not
+    // share a schema: farm portions have no MIN_REGION, and parent farms have
+    // neither PORTION nor SS_NAME. Naming a field a layer lacks makes ArcGIS
+    // fail the whole query with a bare 400, which is what used to make every
+    // piece of undeveloped land unclickable — farm portions being exactly
+    // where undeveloped land lives.
+    outFields: "*",
     returnGeometry: String(returnGeometry),
     outSR: "4326",
+    ...(returnGeometry ? { maxAllowableOffset: String(GEOMETRY_TOLERANCE) } : {}),
     f: "json",
   });
 
@@ -146,15 +170,24 @@ function toLeafletRings(rings: unknown): [number, number][][] {
 
 async function findParcel(lng: number, lat: number): Promise<Parcel | null> {
   for (const layer of PARCEL_LAYERS) {
-    const rows = await arcgis(
-      layer.id,
-      lng,
-      lat,
-      "PRCL_KEY,PRCL_TYPE,GEOM_AREA,PROVINCE,MIN_REGION,PARCEL_NO,PORTION,SS_NAME",
-      true,
+    let rows: Record<string, unknown>[];
+    try {
+      rows = await arcgis(layer.id, lng, lat, true);
+    } catch {
+      // One layer being unavailable must not sink the others. A click that
+      // finds nothing on erven should still find the farm portion under it.
+      continue;
+    }
+    if (rows.length === 0) continue;
+
+    // Several parcels can contain one point where a portion sits inside its
+    // parent. The smallest is the most specific, and the most specific is what
+    // someone clicking a site means.
+    const row = rows.reduce((smallest, candidate) =>
+      (num(candidate.GEOM_AREA) ?? Infinity) < (num(smallest.GEOM_AREA) ?? Infinity)
+        ? candidate
+        : smallest,
     );
-    const row = rows[0];
-    if (!row) continue;
 
     const areaM2 = num(row.GEOM_AREA) ?? 0;
     const parcelNo = num(row.PARCEL_NO);
@@ -169,7 +202,10 @@ async function findParcel(lng: number, lat: number): Promise<Parcel | null> {
       areaM2,
       areaHa: areaM2 / 10_000,
       province: str(row.PROVINCE),
-      registrationDivision: str(row.MIN_REGION),
+      // Farm portions and parent farms carry no MIN_REGION, only the broader
+      // MAJ_REGION. Falling back keeps the location line populated instead of
+      // going blank on exactly the rural parcels this matters most for.
+      registrationDivision: str(row.MIN_REGION) || str(row.MAJ_REGION),
       schemeName: str(row.SS_NAME) || undefined,
       rings: toLeafletRings(row.__rings),
     };
@@ -178,13 +214,7 @@ async function findParcel(lng: number, lat: number): Promise<Parcel | null> {
 }
 
 async function findMunicipality(lng: number, lat: number): Promise<Municipality | null> {
-  const rows = await arcgis(
-    MUNICIPALITY_LAYER,
-    lng,
-    lat,
-    "Name,Code,District_Name,CAT2",
-    false,
-  );
+  const rows = await arcgis(MUNICIPALITY_LAYER, lng, lat, false);
   const row = rows[0];
   if (!row) return null;
   return {

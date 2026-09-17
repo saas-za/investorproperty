@@ -78,10 +78,36 @@ export default function ParcelMap({
         scrollWheelZoom: false,
       });
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      // Satellite by default. On undeveloped land a street map shows almost
+      // nothing — no roads, no buildings, no way to tell one blank rectangle
+      // from the next — and undeveloped land is the whole point of the tool.
+      const satellite = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 19, attribution: "Imagery © Esri, Maxar, Earthstar Geographics" },
+      );
+      const streets = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: "© OpenStreetMap contributors",
-      }).addTo(m);
+      });
+      // Place names over imagery — without them satellite view is beautiful
+      // and unnavigable.
+      const labels = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+        { maxZoom: 19, attribution: "" },
+      );
+
+      satellite.addTo(m);
+      labels.addTo(m);
+      L.control
+        .layers({ Satellite: satellite, "Street map": streets }, {}, { position: "topright" })
+        .addTo(m);
+
+      // The label overlay belongs to imagery, not to streets, which draw their
+      // own. Swapping base layers has to take it with them.
+      m.on("baselayerchange", (e: { name?: string }) => {
+        if (e.name === "Satellite") labels.addTo(m);
+        else labels.remove();
+      });
 
       m.on("click", async (e: { latlng: { lat: number; lng: number } }) => {
         setError(null);
@@ -155,11 +181,13 @@ export default function ParcelMap({
 
       for (const parcel of selected) {
         if (shapes.current.has(parcel.key) || parcel.rings.length === 0) continue;
+        // Bright stroke, barely-there fill. Over satellite imagery a heavy
+        // fill hides the very ground someone is trying to look at.
         const shape = L.polygon(parcel.rings, {
           color: GOLD,
-          weight: 2,
+          weight: 3,
           fillColor: NAVY,
-          fillOpacity: 0.25,
+          fillOpacity: 0.12,
         })
           .addTo(m)
           .bindTooltip(

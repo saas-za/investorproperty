@@ -143,6 +143,8 @@ export default function ValuationPage() {
     setNonDevelopablePct("");
     setDevelopableArea("");
     setNonDevelopableArea("");
+    setPctTouched({ dev: false, non: false });
+    setAreaTouched({ dev: false, non: false });
   }
 
   useEffect(() => {
@@ -170,19 +172,35 @@ export default function ValuationPage() {
     if (v !== "" && Number.isFinite(n)) setAreaM2((n * HA_TO_M2).toString());
   }
 
-  // Percentage pair — auto-fills the other only while it's still blank.
+  /**
+   * Which of the pair the user has typed in themselves. The other one is
+   * derived and kept in step on every keystroke.
+   *
+   * The earlier version only auto-filled while the other field was still
+   * blank, which meant the balance was computed from a half-typed number and
+   * then frozen: typing 37 302 into a 54 600 site balanced against "3", and
+   * typing 14 563 balanced against "1". Deriving on every keystroke instead of
+   * once is the fix. Once the user edits the derived side too, it stops being
+   * derived and the mismatch warning takes over.
+   */
+  const [pctTouched, setPctTouched] = useState({ dev: false, non: false });
+  const [areaTouched, setAreaTouched] = useState({ dev: false, non: false });
+
+  const balancePct = (v: string) =>
+    String(Math.max(0, Math.round((100 - Number(v)) * 10) / 10));
+
   function onDevelopablePctChange(v: string) {
     setDevelopablePct(v);
-    if (nonDevelopablePct === "" && v !== "") {
-      const n = Number(v);
-      if (Number.isFinite(n)) setNonDevelopablePct(String(Math.max(0, Math.round((100 - n) * 10) / 10)));
+    setPctTouched((t) => ({ ...t, dev: v !== "" }));
+    if (!pctTouched.non && v !== "" && Number.isFinite(Number(v))) {
+      setNonDevelopablePct(balancePct(v));
     }
   }
   function onNonDevelopablePctChange(v: string) {
     setNonDevelopablePct(v);
-    if (developablePct === "" && v !== "") {
-      const n = Number(v);
-      if (Number.isFinite(n)) setDevelopablePct(String(Math.max(0, Math.round((100 - n) * 10) / 10)));
+    setPctTouched((t) => ({ ...t, non: v !== "" }));
+    if (!pctTouched.dev && v !== "" && Number.isFinite(Number(v))) {
+      setDevelopablePct(balancePct(v));
     }
   }
   const pctMismatch =
@@ -199,26 +217,46 @@ export default function ValuationPage() {
     if (!Number.isFinite(ha)) return NaN;
     return splitUnit === "ha" ? ha : ha * HA_TO_M2;
   }
+  const balanceArea = (v: string) => {
+    const total = totalInSplitUnit();
+    const n = Number(v);
+    if (!Number.isFinite(total) || !Number.isFinite(n)) return null;
+    return String(Math.max(0, Math.round((total - n) * 100) / 100));
+  };
+
   function onDevelopableAreaChange(v: string) {
     setDevelopableArea(v);
-    if (nonDevelopableArea === "" && v !== "") {
-      const total = totalInSplitUnit();
-      const n = Number(v);
-      if (Number.isFinite(total) && Number.isFinite(n)) {
-        setNonDevelopableArea(String(Math.max(0, Math.round((total - n) * 100) / 100)));
-      }
+    setAreaTouched((t) => ({ ...t, dev: v !== "" }));
+    if (!areaTouched.non && v !== "") {
+      const balance = balanceArea(v);
+      if (balance !== null) setNonDevelopableArea(balance);
     }
   }
   function onNonDevelopableAreaChange(v: string) {
     setNonDevelopableArea(v);
-    if (developableArea === "" && v !== "") {
-      const total = totalInSplitUnit();
-      const n = Number(v);
-      if (Number.isFinite(total) && Number.isFinite(n)) {
-        setDevelopableArea(String(Math.max(0, Math.round((total - n) * 100) / 100)));
-      }
+    setAreaTouched((t) => ({ ...t, non: v !== "" }));
+    if (!areaTouched.dev && v !== "") {
+      const balance = balanceArea(v);
+      if (balance !== null) setDevelopableArea(balance);
     }
   }
+  // Changing the gross site area, or the unit the split is typed in, has to
+  // move the derived side with it — otherwise the balance silently describes
+  // the previous site.
+  useEffect(() => {
+    if (splitMode !== "absolute") return;
+    if (areaTouched.dev && !areaTouched.non && developableArea !== "") {
+      const balance = balanceArea(developableArea);
+      if (balance !== null) setNonDevelopableArea(balance);
+    } else if (areaTouched.non && !areaTouched.dev && nonDevelopableArea !== "") {
+      const balance = balanceArea(nonDevelopableArea);
+      if (balance !== null) setDevelopableArea(balance);
+    }
+    // Deliberately keyed on the total and the unit only. Adding the two area
+    // fields here would make each keystroke re-derive the field being typed in.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areaHa, splitUnit, splitMode]);
+
   const areaSplitTolerance = splitUnit === "ha" ? 0.01 : 1;
   const areaMismatch =
     splitMode === "absolute" &&
@@ -398,8 +436,9 @@ export default function ValuationPage() {
           <div>
             <div className="flex items-baseline justify-between">
               <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                What can be built there?
-                {compareAssumption && !isBasket ? " — approved / documented rights" : ""}
+                {compareAssumption && !isBasket
+                  ? "Has any rights been approved on this site?"
+                  : "What can be built there?"}
               </label>
             </div>
             <select
@@ -719,19 +758,20 @@ export default function ValuationPage() {
                   onChange={(e) => setCompareAssumption(e.target.checked)}
                   className="mt-0.5"
                 />
-                Compare against an unverified assumption
+                What does the developer want to build here?
               </label>
 
               {compareAssumption && (
                 <div className="mt-4 space-y-4 border-t border-navy/10 pt-4">
                   <p className="text-xs leading-relaxed text-navy/50">
-                    This is where sellers get misled — an architect quotes the maximum a site
-                    could theoretically hold, without checking with the town planner or
-                    considering traffic impact. Enter that assumption here to see the gap.
+                    The developer&apos;s intended use is what the land is actually worth to them.
+                    Entering it alongside the approved rights shows the gap between what the site
+                    is consented for today and what they mean to do with it — which is the gap the
+                    price has to bridge.
                   </p>
                   <div>
                     <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                      Developer&apos;s / architect&apos;s assumption
+                      The developer&apos;s intended use
                     </label>
                     <select
                       value={assumedProductType}
@@ -757,7 +797,7 @@ export default function ValuationPage() {
                   </div>
                   <div>
                     <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                      Assumed selling price per unit (ZAR)
+                      Selling price per unit for that use (ZAR)
                     </label>
                     <NumberInput
                       decimals={0}
@@ -881,30 +921,46 @@ function Report({
 
         {assumedResult ? (
           <>
+            {/* The developer's intended use leads. It is what the land is
+                actually worth to the buyer in front of you; the approved
+                rights are the floor under it, not the headline. */}
             <p className="mt-6 text-xs uppercase tracking-[0.2em] text-gold-deep">
-              Approved vs. assumed — the gap that misleads sellers
+              Estimated land value — the developer&apos;s intended use
             </p>
-            <div className="mt-3 grid grid-cols-2 gap-4">
+            <p className="mt-2 text-4xl font-light text-gold-gradient">
+              {rand(assumedResult.landValue)}
+            </p>
+            <p className="mt-1 text-sm text-navy/60">
+              {assumedProductLabel} · {fmt(assumedResult.opportunities)} opportunities
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-4">
+              <div className="rounded border border-gold/40 bg-gold/5 p-4">
+                <p className="text-[11px] uppercase tracking-wide text-gold-deep">
+                  Developer&apos;s intended use
+                </p>
+                <p className="mt-1 text-2xl font-light text-navy">{rand(assumedResult.landValue)}</p>
+                <p className="mt-1 text-xs text-navy/50">{assumedProductLabel}</p>
+                <p className="text-xs text-navy/50">{fmt(assumedResult.opportunities)} opportunities</p>
+              </div>
               <div className="rounded border border-navy/10 p-4">
-                <p className="text-[11px] uppercase tracking-wide text-navy/40">Approved / documented</p>
-                <p className="mt-1 text-2xl font-light text-navy">{rand(result.landValue)}</p>
+                <p className="text-[11px] uppercase tracking-wide text-navy/40">
+                  Rights approved today
+                </p>
+                <p className="mt-1 text-2xl font-light text-navy/70">{rand(result.landValue)}</p>
                 <p className="mt-1 text-xs text-navy/50">{productLabel}</p>
                 <p className="text-xs text-navy/50">{fmt(result.opportunities)} opportunities</p>
               </div>
-              <div className="rounded border border-amber-300 bg-amber-50 p-4">
-                <p className="text-[11px] uppercase tracking-wide text-amber-700">Architect&apos;s / developer&apos;s assumption</p>
-                <p className="mt-1 text-2xl font-light text-amber-800">{rand(assumedResult.landValue)}</p>
-                <p className="mt-1 text-xs text-amber-700/70">{assumedProductLabel}</p>
-                <p className="text-xs text-amber-700/70">{fmt(assumedResult.opportunities)} opportunities</p>
-              </div>
             </div>
-            <div className="mt-3 rounded bg-red-50 px-4 py-3 text-sm text-red-800">
-              Gap: <strong>{rand(Math.abs(gapValue))}</strong> ({gapPct >= 0 ? "+" : ""}{gapPct.toFixed(0)}%)
+
+            <div className="mt-3 rounded bg-navy/5 px-4 py-3 text-sm text-navy/80">
+              Gap: <strong>{rand(Math.abs(gapValue))}</strong> ({gapPct >= 0 ? "+" : ""}
+              {gapPct.toFixed(0)}%)
               {gapValue > 0
-                ? " — the assumption is worth more than what's approved. Unverified, this is exactly the number a seller fixates on."
-                : " — the assumption is worth less than what's approved."}
-              {" "}Get the higher figure confirmed with the town planner before it's used in a
-              price expectation.
+                ? " — the intended use is worth more than the rights the site carries today. That difference is what the rezoning or departure has to deliver, and it is the part that carries the planning risk."
+                : gapValue < 0
+                  ? " — the intended use is worth less than the approved rights. The site may already be consented for something better."
+                  : " — the intended use and the approved rights value the same."}
             </div>
           </>
         ) : (
@@ -915,8 +971,11 @@ function Report({
         )}
 
         <div className="mt-6 grid grid-cols-2 gap-4 border-t border-navy/10 pt-6 text-sm sm:grid-cols-4">
-          <Metric label="Per hectare" value={rand(result.valuePerHectare)} />
-          <Metric label="Per opportunity" value={rand(result.valuePerOpportunity)} />
+          {/* Both of these are shares of the LAND value, not selling prices.
+              Labelled "Per opportunity" they read as the unit price that was
+              typed in, which is alarming when a R1.44m unit shows R144 000. */}
+          <Metric label="Land value per hectare" value={rand(result.valuePerHectare)} />
+          <Metric label="Land value per opportunity" value={rand(result.valuePerOpportunity)} />
           <Metric label="Opportunities" value={fmt(result.opportunities)} />
           <Metric label="Status factor" value={`${(result.statusPctUsed * 100).toFixed(1)}%`} />
           <Metric label="Density (per net ha)" value={`${fmt(result.densityUsed)} units/ha`} />
@@ -937,8 +996,44 @@ function Report({
           </p>
         )}
 
+        {/* Developer's use first when there is one, because that is the
+            figure the report now leads with. The approved-rights workings sit
+            under it as the floor, not above it as the headline. */}
+        {assumedResult && (
+          <>
+            <h2 className="mt-8 border-t border-navy/10 pt-6 text-sm font-medium uppercase tracking-wide text-navy/60">
+              The workings — developer&apos;s intended use
+            </h2>
+            <table className="mt-3 w-full text-sm">
+              <tbody>
+                <Row label="Net developable area" value={`${fmtHa(assumedResult.netHectares)} ha`} />
+                <Row label="Intended use" value={assumedProductLabel} />
+                <Row
+                  label="× Density"
+                  value={`${fmt(assumedResult.densityUsed)} units per net hectare`}
+                />
+                <Row label="= Opportunities" value={fmt(assumedResult.opportunities)} strong />
+                <Row
+                  label="× Selling price per unit"
+                  value={rand(assumedResult.valuePerOpportunity / assumedResult.statusPctUsed)}
+                />
+                <Row
+                  label="× Status of the opportunity"
+                  value={`${statusLabel} (${(assumedResult.statusPctUsed * 100).toFixed(1)}%)`}
+                />
+                <Row
+                  label="= Estimated land value"
+                  value={rand(assumedResult.landValue)}
+                  strong
+                  final
+                />
+              </tbody>
+            </table>
+          </>
+        )}
+
         <h2 className="mt-8 border-t border-navy/10 pt-6 text-sm font-medium uppercase tracking-wide text-navy/60">
-          The workings{assumedResult ? " — approved scenario" : ""}
+          The workings{assumedResult ? " — rights approved today" : ""}
         </h2>
         <table className="mt-3 w-full text-sm">
           <tbody>
@@ -987,23 +1082,6 @@ function Report({
             <Row label="= Estimated land value" value={rand(result.landValue)} strong final />
           </tbody>
         </table>
-
-        {assumedResult && (
-          <table className="mt-4 w-full text-sm">
-            <tbody>
-              <tr className="border-t-2 border-amber-200">
-                <td colSpan={2} className="py-1.5 text-xs font-medium uppercase tracking-wide text-amber-700">
-                  Assumption scenario
-                </td>
-              </tr>
-              <Row label="What the architect assumes can be built" value={assumedProductLabel} />
-              <Row label="× Density (assumed)" value={`${fmt(assumedResult.densityUsed)} units per net hectare`} />
-              <Row label="= Opportunities (assumed)" value={fmt(assumedResult.opportunities)} strong />
-              <Row label="× Assumed selling price per unit" value={rand(assumedResult.valuePerOpportunity / assumedResult.statusPctUsed)} />
-              <Row label="= Estimated land value (assumed)" value={rand(assumedResult.landValue)} strong final />
-            </tbody>
-          </table>
-        )}
 
         {result.basketBreakdown && (
           <>
