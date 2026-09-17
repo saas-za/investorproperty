@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import NumberInput from "@/components/NumberInput";
 
 interface LandUseOption {
@@ -117,6 +117,25 @@ export default function DevelopmentCharges({
         : prev,
     );
   }, [suggestedUnits]);
+
+  /**
+   * Runs the first calculation on its own once everything it needs has
+   * arrived, rather than leaving it to a second, easy-to-miss button press.
+   * Reported bug: a printed report with the land estimate but no development
+   * charges on it, because "Calculate land estimate" and "Calculate
+   * development charges" are two separate buttons and nothing ever explained
+   * that both had to be pressed. Once fired, this steps aside — the button
+   * still exists for a deliberate recalculation after the person edits
+   * something.
+   */
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current || !active || !rateYear) return;
+    if (!rows[0]?.code || !(Number(rows[0]?.newRight) > 0)) return;
+    autoRan.current = true;
+    calculate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, rateYear, rows]);
 
   async function calculate() {
     setError(null);

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-const PHONE = "082 447 1190";
-const PHONE_TEL = "+27824471190";
+const PHONE = "075 925 7071";
+const PHONE_TEL = "+27759257071";
 const EMAIL = "morne@investorproperty.co.za";
 
 /**

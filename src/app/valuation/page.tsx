@@ -208,6 +208,8 @@ export default function ValuationPage() {
   const [ethekwiniZoning, setEthekwiniZoning] = useState<EthekwiniZoning | null>(null);
   /** Lifted out of the DC panel so the printed report can carry it. */
   const [dcResult, setDcResult] = useState<DcSummary | null>(null);
+  /** A real satellite image of the site, generated for the printed report. */
+  const [siteMapUrl, setSiteMapUrl] = useState<string | null>(null);
 
   const [result, setResult] = useState<QuickResult | null>(null);
   const [assumedResult, setAssumedResult] = useState<QuickResult | null>(null);
@@ -359,6 +361,49 @@ export default function ValuationPage() {
     // fields here would make each keystroke re-derive the field being typed in.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [areaHa, splitUnit, splitMode]);
+
+  /**
+   * A real satellite image of the site for the printed report — generated
+   * once here rather than left for the report to fetch on print, since a
+   * print dialog can't wait on a network request. 600×600, square, as asked
+   * for; the underlying generator defaults to landscape but takes whatever
+   * size is passed.
+   */
+  useEffect(() => {
+    const withGeometry = parcels.filter((p) => p.rings.length > 0);
+    if (withGeometry.length === 0) {
+      setSiteMapUrl(null);
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/site-map", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        parcels: withGeometry.map((p) => ({ rings: p.rings })),
+        width: 600,
+        height: 600,
+      }),
+    })
+      .then((res) => (res.ok ? res.blob() : Promise.reject()))
+      .then((blob) => {
+        if (cancelled) return;
+        setSiteMapUrl((prev) => {
+          if (prev) URL.revokeObjectURL(prev);
+          return URL.createObjectURL(blob);
+        });
+      })
+      .catch(() => {
+        if (!cancelled) setSiteMapUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Keyed on the parcel keys, not the array reference — onParcelsChange
+    // creates a new array on every map interaction even when the selection
+    // itself hasn't changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parcels.map((p) => p.key).join(",")]);
 
   const areaSplitTolerance = splitUnit === "ha" ? 0.01 : 1;
   const areaMismatch =
@@ -1054,6 +1099,7 @@ export default function ValuationPage() {
             dc={dcResult}
             parcels={parcels}
             municipalityName={municipality?.name}
+            siteMapUrl={siteMapUrl}
           />
         )}
 
@@ -1120,6 +1166,7 @@ function Report({
   dc,
   parcels,
   municipalityName,
+  siteMapUrl,
 }: {
   result: QuickResult;
   party: Party;
@@ -1132,6 +1179,7 @@ function Report({
   dc: DcSummary | null;
   parcels: SelectedParcel[];
   municipalityName?: string;
+  siteMapUrl?: string | null;
 }) {
   const today = new Date().toLocaleDateString("en-ZA", { year: "numeric", month: "long", day: "numeric" });
   const gapValue = assumedResult ? assumedResult.landValue - result.landValue : 0;
@@ -1176,17 +1224,28 @@ function Report({
         {/* Which ground this report is about. Printed, because a report that
             does not name its site is unusable a week later. */}
         {(parcels.length > 0 || municipalityName) && (
-          <div className="mt-5 rounded border border-navy/10 bg-navy/[0.02] px-4 py-3 text-xs">
-            <div className="text-[10px] uppercase tracking-wide text-navy/40">The site</div>
-            <div className="mt-1 space-y-0.5 text-navy/70">
-              {parcels.map((p) => (
-                <div key={p.key}>
-                  <span className="font-medium text-navy">{p.label}</span> ·{" "}
-                  {fmt(p.areaM2)} m² · LPI {p.lpi || "—"}
-                </div>
-              ))}
-              {municipalityName && <div className="text-navy/50">{municipalityName}</div>}
+          <div className="mt-5 flex flex-wrap gap-4 rounded border border-navy/10 bg-navy/[0.02] px-4 py-3 text-xs">
+            <div className="min-w-[180px] flex-1">
+              <div className="text-[10px] uppercase tracking-wide text-navy/40">The site</div>
+              <div className="mt-1 space-y-0.5 text-navy/70">
+                {parcels.map((p) => (
+                  <div key={p.key}>
+                    <span className="font-medium text-navy">{p.label}</span> ·{" "}
+                    {fmt(p.areaM2)} m² · LPI {p.lpi || "—"}
+                  </div>
+                ))}
+                {municipalityName && <div className="text-navy/50">{municipalityName}</div>}
+              </div>
             </div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- a session
+                object URL, not a static/optimizable Next/Image source. */}
+            {siteMapUrl && (
+              <img
+                src={siteMapUrl}
+                alt="Satellite view of the site with its registered boundary"
+                className="h-32 w-32 shrink-0 rounded border border-navy/10 object-cover"
+              />
+            )}
           </div>
         )}
 
@@ -1400,8 +1459,11 @@ function Report({
                 </tr>
               </thead>
               <tbody>
-                {result.basketBreakdown.map((row) => (
-                  <tr key={row.unitType} className="border-b border-navy/5">
+                {result.basketBreakdown.map((row, i) => (
+                  // Index, not unitType — the same type can legitimately
+                  // appear twice now that it's picked from a dropdown (two
+                  // rows of "Simplex townhouse" at different price points).
+                  <tr key={i} className="border-b border-navy/5">
                     <td className="py-1.5">{row.unitType}</td>
                     <td className="py-1.5 text-right tabular-nums">{fmt(row.opportunities)}</td>
                     <td className="py-1.5 text-right tabular-nums">{rand(row.pricePerOpportunity)}</td>
