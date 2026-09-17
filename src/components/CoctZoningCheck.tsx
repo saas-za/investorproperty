@@ -9,7 +9,15 @@ interface ZoneOption {
 }
 
 interface BulkHeadroomResult {
-  zone: { code: string; label: string; floorFactor: number; coverage?: number; maxHeightM: number };
+  zone: {
+    code: string;
+    label: string;
+    floorFactor: number;
+    coverage?: number;
+    maxHeightM: number;
+    primaryUses: string;
+    consentUses: string;
+  };
   permittedFloorAreaM2: number;
   proposedFloorAreaM2: number;
   unusedFloorAreaM2: number;
@@ -145,6 +153,19 @@ export default function CoctZoningCheck({
               {result.zone.maxHeightM.toFixed(0)} m height
             </span>
           </div>
+          <details className="rounded border border-navy/10 bg-white/60 px-2.5 py-2">
+            <summary className="cursor-pointer text-navy/60">
+              Primary and consent uses for {result.zone.code}
+            </summary>
+            <p className="mt-1.5 text-navy/70">
+              <span className="font-medium text-navy">Primary (no application needed):</span>{" "}
+              {result.zone.primaryUses}.
+            </p>
+            <p className="mt-1.5 text-navy/70">
+              <span className="font-medium text-navy">Consent use (needs Council approval):</span>{" "}
+              {result.zone.consentUses}.
+            </p>
+          </details>
           <div className="flex justify-between">
             <span className="text-navy/60">Permitted floor space at this zone</span>
             <span className="font-medium text-navy">{fmt(result.permittedFloorAreaM2)} m²</span>

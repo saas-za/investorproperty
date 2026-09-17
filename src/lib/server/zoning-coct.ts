@@ -28,6 +28,15 @@ export interface ZoneLimits {
   /** Maximum height above base level to top of roof, in metres. */
   maxHeightM: number;
   family: "General Residential" | "General Business";
+  /**
+   * Permitted without a separate application, straight off the regulations.
+   * The scheme states primary and consent uses once per subzone *family*
+   * (GR2–GR6 share one list, GB1–GB7 share another) rather than per
+   * individual code — verbatim from the regulations, not summarised.
+   */
+  primaryUses: string;
+  /** Permitted only if Council grants a consent use application. */
+  consentUses: string;
 }
 
 /**
@@ -36,23 +45,54 @@ export interface ZoneLimits {
  * height and floor space, GR3 and GR4 cater for medium, GR5 and GR6 for
  * high-rise.
  */
+/**
+ * Verbatim from the regulations, §6.2: "PRIMARY USES Dwelling house, second
+ * dwelling, group housing, boarding house, flats, private road and open
+ * space" / "CONSENT USES Utility service, place of instruction, place of
+ * worship, institution, hospital, place of assembly, home occupation, shop,
+ * hotel, conference facility, guest house and rooftop base telecommunication
+ * station." One list for the whole GR2–GR6 family — the regulations
+ * themselves don't vary it by individual subzone.
+ */
+const GR_PRIMARY_USES =
+  "Dwelling house, second dwelling, group housing, boarding house, flats, private road and open space";
+const GR_CONSENT_USES =
+  "Utility service, place of instruction, place of worship, institution, hospital, place of assembly, home occupation, shop, hotel, conference facility, guest house and rooftop base telecommunication station";
+
 const GENERAL_RESIDENTIAL: ZoneLimits[] = [
-  { code: "GR2", label: "General Residential 2", floorFactor: 1.0, coverage: 0.6, maxHeightM: 15, family: "General Residential" },
-  { code: "GR3", label: "General Residential 3", floorFactor: 1.0, coverage: 0.6, maxHeightM: 20, family: "General Residential" },
-  { code: "GR4", label: "General Residential 4", floorFactor: 1.5, coverage: 0.6, maxHeightM: 24, family: "General Residential" },
-  { code: "GR5", label: "General Residential 5", floorFactor: 2.5, coverage: 0.6, maxHeightM: 35, family: "General Residential" },
-  { code: "GR6", label: "General Residential 6", floorFactor: 5.0, coverage: 0.6, maxHeightM: 50, family: "General Residential" },
+  { code: "GR2", label: "General Residential 2", floorFactor: 1.0, coverage: 0.6, maxHeightM: 15, family: "General Residential", primaryUses: GR_PRIMARY_USES, consentUses: GR_CONSENT_USES },
+  { code: "GR3", label: "General Residential 3", floorFactor: 1.0, coverage: 0.6, maxHeightM: 20, family: "General Residential", primaryUses: GR_PRIMARY_USES, consentUses: GR_CONSENT_USES },
+  { code: "GR4", label: "General Residential 4", floorFactor: 1.5, coverage: 0.6, maxHeightM: 24, family: "General Residential", primaryUses: GR_PRIMARY_USES, consentUses: GR_CONSENT_USES },
+  { code: "GR5", label: "General Residential 5", floorFactor: 2.5, coverage: 0.6, maxHeightM: 35, family: "General Residential", primaryUses: GR_PRIMARY_USES, consentUses: GR_CONSENT_USES },
+  { code: "GR6", label: "General Residential 6", floorFactor: 5.0, coverage: 0.6, maxHeightM: 50, family: "General Residential", primaryUses: GR_PRIMARY_USES, consentUses: GR_CONSENT_USES },
 ];
+
+/**
+ * §7.2's shared list for GB1–GB7. "PRIMARY USES Business premises, dwelling
+ * house, second dwelling, boarding house, flats, place of instruction, place
+ * of worship, institution, hospital, place of assembly, place of
+ * entertainment, hotel, conference facility, service trade, authority use,
+ * utility service, rooftop base telecommunication station, multiple parking
+ * garage, private road and open space" / "CONSENT USES Adult shop, adult
+ * entertainment business, adult services, informal trading, expo-centre,
+ * motor repair garage, warehouse, freestanding base telecommunication
+ * station, wind turbine infrastructure, transport use, helicopter landing
+ * pad and service station."
+ */
+const GB_PRIMARY_USES =
+  "Business premises, dwelling house, second dwelling, boarding house, flats, place of instruction, place of worship, institution, hospital, place of assembly, place of entertainment, hotel, conference facility, service trade, authority use, utility service, rooftop base telecommunication station, multiple parking garage, private road and open space";
+const GB_CONSENT_USES =
+  "Adult shop, adult entertainment business, adult services, informal trading, expo-centre, motor repair garage, warehouse, freestanding base telecommunication station, wind turbine infrastructure, transport use, helicopter landing pad and service station";
 
 /** Table of height and floor factor in General Business Zones. No coverage limit is set. */
 const GENERAL_BUSINESS: ZoneLimits[] = [
-  { code: "GB1", label: "General Business 1", floorFactor: 1.5, maxHeightM: 15, family: "General Business" },
-  { code: "GB2", label: "General Business 2", floorFactor: 2.0, maxHeightM: 15, family: "General Business" },
-  { code: "GB3", label: "General Business 3", floorFactor: 2.0, maxHeightM: 25, family: "General Business" },
-  { code: "GB4", label: "General Business 4", floorFactor: 3.0, maxHeightM: 25, family: "General Business" },
-  { code: "GB5", label: "General Business 5", floorFactor: 4.0, maxHeightM: 25, family: "General Business" },
-  { code: "GB6", label: "General Business 6", floorFactor: 6.0, maxHeightM: 38, family: "General Business" },
-  { code: "GB7", label: "General Business 7", floorFactor: 12.0, maxHeightM: 60, family: "General Business" },
+  { code: "GB1", label: "General Business 1", floorFactor: 1.5, maxHeightM: 15, family: "General Business", primaryUses: GB_PRIMARY_USES, consentUses: GB_CONSENT_USES },
+  { code: "GB2", label: "General Business 2", floorFactor: 2.0, maxHeightM: 15, family: "General Business", primaryUses: GB_PRIMARY_USES, consentUses: GB_CONSENT_USES },
+  { code: "GB3", label: "General Business 3", floorFactor: 2.0, maxHeightM: 25, family: "General Business", primaryUses: GB_PRIMARY_USES, consentUses: GB_CONSENT_USES },
+  { code: "GB4", label: "General Business 4", floorFactor: 3.0, maxHeightM: 25, family: "General Business", primaryUses: GB_PRIMARY_USES, consentUses: GB_CONSENT_USES },
+  { code: "GB5", label: "General Business 5", floorFactor: 4.0, maxHeightM: 25, family: "General Business", primaryUses: GB_PRIMARY_USES, consentUses: GB_CONSENT_USES },
+  { code: "GB6", label: "General Business 6", floorFactor: 6.0, maxHeightM: 38, family: "General Business", primaryUses: GB_PRIMARY_USES, consentUses: GB_CONSENT_USES },
+  { code: "GB7", label: "General Business 7", floorFactor: 12.0, maxHeightM: 60, family: "General Business", primaryUses: GB_PRIMARY_USES, consentUses: GB_CONSENT_USES },
 ];
 
 const ALL = [...GENERAL_RESIDENTIAL, ...GENERAL_BUSINESS];
