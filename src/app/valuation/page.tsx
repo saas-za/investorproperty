@@ -3,7 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import DevelopmentCharges from "@/components/DevelopmentCharges";
 import NumberInput from "@/components/NumberInput";
+import ParcelMap, { type Municipality, type SelectedParcel } from "@/components/ParcelMap";
 import { portal } from "@/config/platform";
 
 interface Option {
@@ -31,8 +33,17 @@ interface QuickResult {
   netRatioUsed: number;
   netRatioWasDefaulted: boolean;
   areaSplitMode: "ratio" | "absolute";
+  basisUsed: "density" | "bulk" | "basket";
   densityUsed: number;
   effectiveDensityPerGrossHectare: number;
+  bulk?: {
+    floorFactor: number;
+    averageUnitSizeM2: number;
+    totalFloorAreaM2: number;
+    coverage?: number;
+    impliedDensityPerNetHectare: number;
+    exceedsDensityLadder: boolean;
+  };
   statusPctUsed: number;
   opportunities: number;
   landValue: number;
@@ -65,6 +76,14 @@ export default function ValuationPage() {
   const [unitPrice, setUnitPrice] = useState("1000000");
   const [densityOverride, setDensityOverride] = useState("");
 
+  // Density (units/ha) or bulk (floor factor × average unit size). A scheme
+  // regulation grants one or the other, never both, and converting between
+  // them is where a seller's case usually falls over.
+  const [basis, setBasis] = useState<"density" | "bulk">("density");
+  const [floorFactor, setFloorFactor] = useState("");
+  const [avgUnitSize, setAvgUnitSize] = useState("");
+  const [coveragePct, setCoveragePct] = useState("");
+
   const [basket, setBasket] = useState<BasketRow[]>([emptyBasketRow()]);
 
   // Net developable area: a % pair, or a typed absolute-area pair. Both pairs
@@ -85,12 +104,46 @@ export default function ValuationPage() {
   const [assumedDensityOverride, setAssumedDensityOverride] = useState("");
   const [assumedUnitPrice, setAssumedUnitPrice] = useState("");
 
+  // Map-picked parcels. The area they add up to drives the gross site area,
+  // and the municipality they fall in decides whether development charges can
+  // be calculated at all.
+  const [showMap, setShowMap] = useState(false);
+  const [parcels, setParcels] = useState<SelectedParcel[]>([]);
+  const [municipality, setMunicipality] = useState<Municipality | null>(null);
+
   const [result, setResult] = useState<QuickResult | null>(null);
   const [assumedResult, setAssumedResult] = useState<QuickResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const isBasket = productType === "basket_of_rights";
+
+  /** Live feedback while typing a floor factor — the bulk it buys on this site. */
+  const floorAreaPreview =
+    basis === "bulk" && Number(floorFactor) > 0 && Number(areaM2) > 0
+      ? Number(floorFactor) * Number(areaM2)
+      : null;
+
+  /**
+   * Selecting parcels overwrites the gross area — that is the point of picking
+   * on a map. The split fields are cleared with it, because a developable
+   * percentage carried over from a different site is worse than a blank one.
+   */
+  function onParcelsChange(next: SelectedParcel[], muni: Municipality | null) {
+    setParcels(next);
+    if (muni) setMunicipality(muni);
+    if (next.length === 0) {
+      setMunicipality(null);
+      return;
+    }
+    const totalM2 = next.reduce((s, p) => s + p.areaM2, 0);
+    setAreaM2(String(Math.round(totalM2)));
+    setAreaHa((totalM2 / HA_TO_M2).toFixed(4));
+    setDevelopablePct("");
+    setNonDevelopablePct("");
+    setDevelopableArea("");
+    setNonDevelopableArea("");
+  }
 
   useEffect(() => {
     fetch("/api/valuation/quick")
@@ -227,7 +280,14 @@ export default function ValuationPage() {
           }));
       } else {
         approvedBody.averageUnitPrice = Number(unitPrice);
-        if (densityOverride) approvedBody.density = Number(densityOverride);
+        if (basis === "bulk") {
+          approvedBody.basis = "bulk";
+          approvedBody.floorFactor = Number(floorFactor);
+          approvedBody.averageUnitSizeM2 = Number(avgUnitSize);
+          if (coveragePct) approvedBody.coverage = Number(coveragePct) / 100;
+        } else if (densityOverride) {
+          approvedBody.density = Number(densityOverride);
+        }
       }
 
       const approved = await runCalc(approvedBody);
@@ -272,11 +332,45 @@ export default function ValuationPage() {
           />
         </div>
 
-        <form onSubmit={calculate} className="no-print mt-8 space-y-6 rounded-lg border border-navy/10 bg-white p-6 shadow-sm">
+        <div className="no-print mt-8 rounded-lg border border-navy/10 bg-white p-6 shadow-sm">
+          <div className="flex items-baseline justify-between gap-4">
+            <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
+              Find the site
+            </label>
+            <button
+              type="button"
+              onClick={() => setShowMap((v) => !v)}
+              className="text-xs text-gold-deep underline underline-offset-2"
+            >
+              {showMap ? "Hide the map" : "Pick it on a map instead"}
+            </button>
+          </div>
+          {showMap ? (
+            <ParcelMap
+              className="mt-3"
+              selected={parcels}
+              onChange={onParcelsChange}
+            />
+          ) : (
+            <p className="mt-2 text-xs text-navy/50">
+              Clicking the site on a map fills in its registered extent and erf or farm number
+              from the national cadastre, instead of typing them.
+            </p>
+          )}
+        </div>
+
+        <form onSubmit={calculate} className="no-print mt-6 space-y-6 rounded-lg border border-navy/10 bg-white p-6 shadow-sm">
           <div>
             <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
               Gross site area
             </label>
+            {parcels.length > 0 && (
+              <p className="mt-1 text-[11px] text-navy/50">
+                From {parcels.length === 1 ? parcels[0].label : `${parcels.length} selected parcels`}
+                {municipality ? ` · ${municipality.name}` : ""}. Override it if the site plan
+                differs from the registered extent.
+              </p>
+            )}
             <div className="mt-1.5 grid grid-cols-2 gap-3">
               <div>
                 <NumberInput
@@ -318,18 +412,91 @@ export default function ValuationPage() {
               ))}
             </select>
             {!isBasket && (
-              <details className="mt-1.5">
-                <summary className="cursor-pointer text-xs text-navy/50">
-                  Override the density assumption
-                </summary>
-                <NumberInput
-                  decimals={0}
-                  placeholder="units per net hectare — leave blank to use our default"
-                  value={densityOverride}
-                  onChange={setDensityOverride}
-                  className="mt-2 w-full rounded border border-navy/20 px-3 py-2 text-sm"
-                />
-              </details>
+              <>
+                {/* Two ways to say the same thing, and which one is honest
+                    depends on what the approval actually grants. A Cape Town
+                    GR3 site is given a floor factor, never a density. */}
+                <div className="mt-2 flex gap-1 rounded-md bg-navy/5 p-1 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setBasis("density")}
+                    className={`flex-1 rounded px-2 py-1.5 transition ${basis === "density" ? "bg-white shadow-sm font-medium text-navy" : "text-navy/50"}`}
+                  >
+                    By density
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBasis("bulk")}
+                    className={`flex-1 rounded px-2 py-1.5 transition ${basis === "bulk" ? "bg-white shadow-sm font-medium text-navy" : "text-navy/50"}`}
+                  >
+                    By floor factor
+                  </button>
+                </div>
+
+                {basis === "density" ? (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs text-navy/50">
+                      Override the density assumption
+                    </summary>
+                    <NumberInput
+                      decimals={0}
+                      placeholder="units per net hectare — leave blank to use our default"
+                      value={densityOverride}
+                      onChange={setDensityOverride}
+                      className="mt-2 w-full rounded border border-navy/20 px-3 py-2 text-sm"
+                    />
+                  </details>
+                ) : (
+                  <div className="mt-2">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <NumberInput
+                          decimals={2}
+                          placeholder="0.70"
+                          value={floorFactor}
+                          onChange={setFloorFactor}
+                          className="w-full rounded border border-navy/20 px-3 py-2 text-sm"
+                        />
+                        <span className="mt-1 block text-[11px] text-navy/40">Floor factor</span>
+                      </div>
+                      <div>
+                        <NumberInput
+                          decimals={0}
+                          placeholder="68"
+                          value={avgUnitSize}
+                          onChange={setAvgUnitSize}
+                          className="w-full rounded border border-navy/20 px-3 py-2 text-sm"
+                        />
+                        <span className="mt-1 block text-[11px] text-navy/40">
+                          Average unit size (m²)
+                        </span>
+                      </div>
+                      <div>
+                        <NumberInput
+                          decimals={1}
+                          placeholder="26.3"
+                          value={coveragePct}
+                          onChange={setCoveragePct}
+                          className="w-full rounded border border-navy/20 px-3 py-2 text-sm"
+                        />
+                        <span className="mt-1 block text-[11px] text-navy/40">
+                          Coverage % (optional)
+                        </span>
+                      </div>
+                    </div>
+                    {floorAreaPreview !== null && (
+                      <p className="mt-2 text-xs text-navy/50">
+                        {fmt(floorAreaPreview)} m² of floor space
+                        {avgUnitSize && Number(avgUnitSize) > 0
+                          ? ` · about ${fmt(floorAreaPreview / Number(avgUnitSize))} units`
+                          : ""}
+                        . Floor factor applies to the gross site area, so the conservation portion
+                        still earns bulk.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -433,7 +600,7 @@ export default function ValuationPage() {
 
           <div>
             <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-              Net developable area — not all of the site is sellable
+              Net developable area
             </label>
             <div className="mt-2 flex gap-1 rounded-md bg-navy/5 p-1 text-xs">
               <button
@@ -483,11 +650,6 @@ export default function ValuationPage() {
                     These don&apos;t add up to 100% — check the split.
                   </p>
                 )}
-                <p className="mt-1.5 text-xs leading-relaxed text-navy/50">
-                  Type one and the other fills in automatically. Leave both blank for a
-                  conservative 60% default. Roads, communal areas and services typically consume
-                  30–40% of a site.
-                </p>
               </div>
             ) : (
               <div className="mt-2 space-y-2">
@@ -557,8 +719,7 @@ export default function ValuationPage() {
                   onChange={(e) => setCompareAssumption(e.target.checked)}
                   className="mt-0.5"
                 />
-                Compare against an unverified assumption (e.g. from an architect, before
-                town-planning or traffic-impact review)
+                Compare against an unverified assumption
               </label>
 
               {compareAssumption && (
@@ -646,7 +807,17 @@ export default function ValuationPage() {
           </>
         )}
 
-        <p className="no-print mt-8 text-xs leading-relaxed text-navy/40">
+        {/* Below the estimate, not inside it. The land figure stands on its own;
+            what the municipality charges on top is the next question, and it is
+            the one that moves a deal from "worth it" to "not". */}
+        <DevelopmentCharges
+          className="no-print mt-6"
+          municipalityCode={municipality?.code}
+          municipalityName={municipality?.name}
+          suggestedUnits={result?.opportunities}
+        />
+
+        <p className="no-print mx-auto mt-8 max-w-2xl text-center text-xs leading-relaxed text-navy/40">
           This is an estimate, not a valuation — only a registered professional valuer may
           provide a valuation. It is a starting point for discussion between buyer and seller,
           not a substitute for a full feasibility study, a survey, or professional advice.
@@ -754,6 +925,18 @@ function Report({
           <Metric label="Non-developable" value={`${fmtHa(result.nonDevelopableHectares)} ha`} />
         </div>
 
+        {/* A floor factor can buy a density well beyond anything a rule of
+            thumb would produce. Saying so is the point — it is the difference
+            between the tool agreeing with a planner and arguing with one. */}
+        {result.bulk?.exceedsDensityLadder && (
+          <p className="mt-4 rounded bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+            At {fmt(result.densityUsed)} units per net hectare this site is denser than any of our
+            standard density assumptions, the highest of which is 120. That is not an error — a
+            generous floor factor on a constrained site does exactly this. It does mean the figure
+            rests on the floor factor being granted as entered.
+          </p>
+        )}
+
         <h2 className="mt-8 border-t border-navy/10 pt-6 text-sm font-medium uppercase tracking-wide text-navy/60">
           The workings{assumedResult ? " — approved scenario" : ""}
         </h2>
@@ -766,8 +949,35 @@ function Report({
             />
             <Row label="= Net developable area" value={`${fmtHa(result.netHectares)} ha`} strong />
             <Row label="What can be built" value={productLabel} />
-            {!result.basketBreakdown && (
-              <Row label="× Density" value={`${fmt(result.densityUsed)} units per net hectare`} />
+            {result.bulk ? (
+              <>
+                {/* Bulk is granted on the gross site, so the workings have to
+                    show that — otherwise the floor area looks wrong against
+                    the net area two rows above. */}
+                <Row
+                  label="× Floor factor (on gross site area)"
+                  value={result.bulk.floorFactor.toFixed(2)}
+                />
+                <Row
+                  label="= Total floor space"
+                  value={`${fmt(result.bulk.totalFloorAreaM2)} m²`}
+                  strong
+                />
+                {result.bulk.coverage !== undefined && (
+                  <Row
+                    label="Site coverage"
+                    value={`${(result.bulk.coverage * 100).toFixed(1)}%`}
+                  />
+                )}
+                <Row
+                  label="÷ Average unit size"
+                  value={`${fmt(result.bulk.averageUnitSizeM2)} m²`}
+                />
+              </>
+            ) : (
+              !result.basketBreakdown && (
+                <Row label="× Density" value={`${fmt(result.densityUsed)} units per net hectare`} />
+              )
             )}
             <Row label="= Opportunities" value={fmt(result.opportunities)} strong />
             {!result.basketBreakdown && (
@@ -829,7 +1039,7 @@ function Report({
           </p>
         )}
 
-        <p className="mt-6 border-t border-navy/10 pt-4 text-[11px] leading-relaxed text-navy/40">
+        <p className="mx-auto mt-6 max-w-2xl border-t border-navy/10 pt-4 text-center text-[11px] leading-relaxed text-navy/40">
           Prepared by Investor Property as a discussion starting point for both parties. This is
           an estimate, not a valuation — only a registered professional valuer may provide a
           valuation. It is not a substitute for a full feasibility study, a land survey, or

@@ -83,6 +83,16 @@ export async function POST(request: Request) {
     );
   }
 
+  if (
+    body.basis === "bulk" &&
+    (typeof body.floorFactor !== "number" || typeof body.averageUnitSizeM2 !== "number")
+  ) {
+    return NextResponse.json(
+      { error: "The bulk basis needs both a floor factor and an average unit size" },
+      { status: 400 },
+    );
+  }
+
   try {
     const result = calculateQuickValuation({
       grossHectares: typeof body.grossHectares === "number" ? body.grossHectares : undefined,
@@ -94,6 +104,11 @@ export async function POST(request: Request) {
       status: body.status as LandStatus,
       density: typeof body.density === "number" ? body.density : undefined,
       netRatio: typeof body.netRatio === "number" ? body.netRatio : undefined,
+      basis: body.basis === "bulk" ? "bulk" : "density",
+      floorFactor: typeof body.floorFactor === "number" ? body.floorFactor : undefined,
+      averageUnitSizeM2:
+        typeof body.averageUnitSizeM2 === "number" ? body.averageUnitSizeM2 : undefined,
+      coverage: typeof body.coverage === "number" ? body.coverage : undefined,
     });
     return NextResponse.json(result);
   } catch (e) {

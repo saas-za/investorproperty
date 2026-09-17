@@ -1,113 +1,123 @@
-# Map-based site selection — verified findings and plan
+# Map-based site selection — built, and how it works
 
-Written 2026-09-17, in response to Gemini research Morné brought over. Its general shape was
-useful — three real data layers (cadastral, spatial, zoning) is the right mental model, and
-matches how Lightstone/CMA Info actually work — but one specific technical claim was checked
-against reality and corrected, which changes the recommended path.
+Originally written 2026-09-17 as a research note in response to Gemini research Morné brought
+over. Rewritten the same day once the map picker was actually built, so this now describes what
+exists rather than what was proposed.
 
-## What Gemini got right
+## The source, and why this one
 
-The three-layer model of how established players (Lightstone, CMA Info) operate is accurate:
-deeds records (ownership, price history), Surveyor-General cadastral boundaries, and zoning/AVM
-overlays. That framing is worth keeping.
-
-## What Gemini got wrong, and what's verified instead
-
-**Claim:** CapeFarmMapper is built on GeoServer/OpenLayers, queryable via standard WFS.
-
-**Checked, and wrong.** CapeFarmMapper runs on **Esri ArcGIS**, not GeoServer. Its published user
-manual documents no REST API, no WFS/WMS endpoint, and no programmatic query method — web
-interface only. Two standard ArcGIS services-directory paths on `gis.elsenburg.com` both returned
-404. Gemini's specific integration instructions for it were plausible-sounding but not actually
-verifiable, and shouldn't be built against without further digging directly with the Western Cape
-Department of Agriculture's GIS unit.
-
-**Verified instead — a better source than the one being asked about.** The **Council for
-Geoscience** (a national government body, not a Western Cape one) hosts a live, public,
+**Council for Geoscience**, a national government body, hosts a live, public,
 **no-authentication-required** ArcGIS MapServer:
 
 ```
 https://maps.geoscience.org.za/hosting/rest/services/Administrative_Boundaries_and_Cadastral_Data/MapServer
 ```
 
-Confirmed by direct query (`/8/query?where=1=1&outFields=*&f=json`), not just by reading its
-metadata page — it returns real parcel records:
+Chosen over CapeFarmMapper, which Gemini recommended. **That recommendation was wrong on the
+facts** and the correction is worth keeping: CapeFarmMapper runs on Esri ArcGIS, not GeoServer;
+its published user manual documents no REST API, no WFS/WMS endpoint and no programmatic query
+method; and two standard ArcGIS services-directory paths on `gis.elsenburg.com` both returned 404.
+Gemini's integration instructions for it were plausible-sounding and not verifiable.
+
+Geoscience is also simply the better source: **national coverage**, where CapeFarmMapper is
+Western Cape only. Boxing site selection into one province would have undercut the
+municipality-agnostic design already built into the density defaults.
+
+## Layers actually used
+
+| Layer | ID | What it gives |
+|---|---|---|
+| Local Municipality | 1 | `Name` ("City of Cape Town"), `Code` ("CPT"), district, category |
+| SA Erf | 6 | Urban erven, national |
+| SA Holding | 7 | Smallholdings |
+| SA Farm Portion | 8 | Farm portions |
+| SA Parent Farm | 9 | Parent farm records |
+
+Parcel layers are tried in that order on a click, because a point falls in exactly one parcel but
+which *kind* varies: urban sites are erven, peri-urban ones are agricultural holdings, anything
+rural is a farm portion. Erf first, because that is what a development site usually is.
+
+Per-province copies of all four layers also exist (11–53). They are not used — the national
+layers already cover everything and switching layer by province would add a lookup for nothing.
+
+The service's spatial reference is **WKID 4148 (Hartebeesthoek94)**. Queries pass `inSR=4326` and
+`outSR=4326` and let the server reproject; the difference is sub-metre and irrelevant at parcel
+scale.
+
+Verified live, not just read off a metadata page. A click on Cape Town CBD returns:
 
 ```json
 {
-  "PRCL_TYPE": "FP", "GEOM_AREA": 20886.67, "PROVINCE": "EASTERN CAPE",
-  "PARCEL_NO": 410, "PORTION": 0, "PRCL_KEY": "E121C112000000000410000000"
+  "parcel": { "label": "Erf 4651", "areaM2": 33342.17, "province": "WESTERN CAPE",
+              "registrationDivision": "CAPE TOWN", "key": "WCPTC016000700004651000001" },
+  "municipality": { "name": "City of Cape Town", "code": "CPT" },
+  "developmentChargesAvailable": true
 }
 ```
 
-Layers exposed, nationally, all nine provinces:
+## What was built
 
-| Layer | ID | Contents |
-|---|---|---|
-| SA Erf | 6 | Erven, national |
-| Holding | 7 | Smallholdings |
-| Farm Portion | 8 | Farm portions — confirmed working above |
-| Parent Farm | 9 | Parent farm records |
-| + per-province copies of all four | — | One set per province, same schema |
+### `src/lib/server/parcel-lookup.ts`
 
-Fields returned per parcel: `PRCL_KEY`, `PRCL_TYPE`, `GEOM_AREA` (m²), `PROVINCE`, `PARCEL_NO`,
-`PORTION`, plus polygon geometry. This is exactly what a map click needs to hand to the Desktop
-Land Estimate: erf/farm/portion number, size, and location — for free, with no licensing
-negotiation, no cost, no CapeFarmMapper reverse-engineering required.
+Server-only. Turns a lat/lng into a parcel plus the municipality governing it. The two queries run
+independently via `Promise.allSettled`, because a click is still useful with only one of them.
+Responses are cached for a day — the cadastre changes on subdivision, not by the minute, and this
+is a free government service that should not be hammered.
 
-**Why this is the better choice even beyond being verified:** it's national. Boxing site
-selection into Cape Farm Mapper's Western Cape-only coverage would have undercut the
-municipality-agnostic design already built into the density defaults (see `ROADMAP.md`'s note on
-this exact tension with the Oliphantskop model).
+Server-side for three reasons, in order: which layers are queried and in what order is worth
+keeping (same argument as the valuation engine); it lets a lookup be rate-limited as one unit; and
+the browser never has to deal with the upstream being slow or CORS-hostile.
 
-## The Deeds Office and municipal-framework findings — plausible, not yet verified
+### `src/app/api/parcel/route.ts`
 
-Gemini's guidance on the Deeds Office (Aktex/DeedsWeb, no direct public access, SearchWorks/WinDeed
-as the practical aggregator route) and on municipal SDF/zoning updates (no central feed, per-metro
-GIS portals, Gazette monitoring as the fallback) is standard, credible advice and matches what's
-publicly known about how these systems work. It has not been independently verified the way the
-CapeFarmMapper claim was, because there was nothing quick to check — no specific URL or technical
-claim to test. Treat it as a reasonable starting brief for the deeds/legal side, not as confirmed
-fact, the same caution that applies to anything from an LLM without a source checked against it.
+`POST { lat, lng }`. Rate limited to 60/min/IP — generous, because panning a map legitimately
+produces a run of clicks; it exists to stop the endpoint being used as a free bulk-scrape proxy.
+Rejects points outside South Africa before the round trip. On upstream failure it says so plainly
+so the form falls back to typing the area in by hand rather than looking broken.
 
-One immediately actionable point from it: **you already pay for SearchWorks.** That's very likely
-the fastest path to deeds data — worth a direct question to them about API/bulk access — well
-before any conversation with DALRRD about bulk licensing, which is a much longer and more
-expensive road for no clear near-term payoff.
+### `src/components/ParcelMap.tsx`
 
-## How this connects to what's already built
+Leaflet with OpenStreetMap tiles. Click a parcel to select, click it again to deselect — that is
+the whole gesture, no modes or modifier keys. Multi-select because a site is often several parcels
+being consolidated, and the area handed back is their total.
 
-Three pieces this plugs into, all already done:
+Leaflet is imported inside an effect rather than at module scope, because it reaches for `window`
+at import time. That keeps the page a normal server-rendered route with an interactive island in
+it. Scroll-wheel zoom is off so a stray scroll while reading the form doesn't throw the map across
+the country.
 
-1. **`docs/DEVELOPMENT_CHARGES.md`** — the City of Cape Town DC Calculator, fully reverse-engineered:
-   six services, demand factors per land use, existing-rights credits. Needs a UI to actually use
-   it; the engine and rate tables are already extracted.
-2. **`docs/VALUATION_MODEL.md`** — the Oliphantskop (Langebaan) CAPEX model: building cost per m²,
-   escalation, professional fees, the full cost cascade. Source workbook confirmed still in
-   `reference/` (see top of this response). This is the calibration source for a future building-cost
-   engine (Phase 3 in `ROADMAP.md`), not wired into the Desktop Land Estimate yet.
-3. **The Desktop Land Estimate itself** — currently takes hectares typed by hand. A map click
-   would fill that in automatically, and *also* hand over the parcel's zoning/land-use code, which
-   is exactly what the DC engine needs as an input.
+Address search uses Nominatim (OpenStreetMap's own geocoder — free, no key). It only moves the
+map; the parcel still comes from the cadastre on click, so a vague search result costs nothing.
 
-## Proposed sequence
+### Where it is wired in
 
-1. **Map picker on the Desktop Land Estimate** — `esri-leaflet` (a thin, well-maintained wrapper
-   for exactly this kind of Esri MapServer) against the Council for Geoscience service. Click a
-   parcel → erf/farm/portion number and area auto-fill the existing hectare field. This is the
-   most self-contained piece and doesn't require the other two engines to exist first.
-2. **Wire the DC engine into the estimate** — once a parcel and its land use are known, show the
-   development charges alongside the land value, using the already-extracted rate tables.
-3. **Building-cost overlay from the Oliphantskop calibration** — the larger piece, matches Phase 3
-   in `ROADMAP.md`, not scoped in detail yet.
+**Desktop Land Estimate** (`/valuation`) — "Pick it on a map instead" above the gross area field.
+Selecting parcels overwrites the gross site area and clears the developable split, because a
+percentage carried over from a different site is worse than a blank one. The municipality it
+resolves is what opens the development charges panel.
 
-## Open questions
+**CRM Matrix → Development Land** (`/crm/land`) — "Add from map" creates a new opportunity named
+off the cadastre, and each row's expanded drawer can attach or change its parcels. Rows with
+confirmed parcels carry a "verified" chip, because *confirmed against the cadastre* is a different
+claim from *typed off a listing* and the matrix should show which it is.
 
-- **CapeFarmMapper specifically** — is Western Cape—specific agricultural detail (soil type, water
-  resources) something you actually need beyond what Geoscience's cadastral layer gives you? If
-  yes, that's a call to the Department of Agriculture's GIS unit directly, not something to
-  reverse-engineer from the outside.
-- **SearchWorks API access** — worth asking them directly, given you already have a commercial
-  relationship there.
-- Does step 1 (map picker) match what you meant by "select the property(s) on the map," or did
-  you have a different interaction in mind?
+Boundaries are deliberately **not** stored on a land row — only the parcel key, label and extent.
+A stored polygon goes stale the moment a subdivision registers.
+
+## What this does not give you
+
+- **No zoning.** There is no national zoning layer, and there will not be one — zoning is a
+  municipal competence and each scheme differs. Zoning still has to be confirmed with the
+  municipality. The CRM says so on the page rather than implying otherwise.
+- **No ownership.** That is the Deeds Office, deliberately out of scope for now.
+- **Registered extent, not site plan area.** These differ, sometimes materially. The map fills in
+  the registered figure and says it may differ from a site plan; the field stays editable.
+
+## Still open
+
+- **SearchWorks API access** — Morné already pays for it, which makes it very likely the fastest
+  path to deeds data. Worth a direct question to them, well before any conversation with DALRRD
+  about bulk licensing.
+- **CapeFarmMapper specifically** — only if Western Cape agricultural detail (soil type, water
+  resources) is needed beyond the cadastral layer. That is a call to the Department of
+  Agriculture's GIS unit, not something to reverse-engineer from outside.

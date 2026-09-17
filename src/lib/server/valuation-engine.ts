@@ -85,6 +85,22 @@ export interface BasketRow {
   pricePerOpportunity: number;
 }
 
+/**
+ * How the opportunity count is arrived at.
+ *
+ *  - `density` — units per net hectare, the rule-of-thumb route. What a broker
+ *    reaches for when all that is known is "apartments, roughly this dense".
+ *  - `bulk` — floor factor and average unit size, the route a town planner and
+ *    an architect actually work in. A Cape Town GR3 site is granted a floor
+ *    factor and a coverage, not a density, and back-solving a density from
+ *    them is exactly the step that loses the argument with the planner.
+ *
+ * Both land in the same place: a number of opportunities on a net area. Which
+ * one is honest depends on what the site's approval actually says, which is
+ * why the tool asks rather than assuming.
+ */
+export type OpportunityBasis = "density" | "bulk";
+
 export interface QuickValuationInput {
   /** Gross site area in hectares. Ignored if developable/nonDevelopable are both supplied. */
   grossHectares?: number;
@@ -100,7 +116,20 @@ export interface QuickValuationInput {
   nonDevelopableHectares?: number;
 
   productType: ProductType;
-  /** Units/net-ha override. Ignored for basket_of_rights. */
+  /** Defaults to `density`. Ignored for basket_of_rights, which supplies counts directly. */
+  basis?: OpportunityBasis;
+  /**
+   * Bulk basis only. The floor factor (FAR/FSR) granted by the zoning, and the
+   * average unit size it is to be divided into. Floor factor is quoted against
+   * the *gross* site area in every South African scheme regulation seen so far,
+   * which is why it multiplies gross rather than net here — getting this wrong
+   * overstates a constrained site badly.
+   */
+  floorFactor?: number;
+  averageUnitSizeM2?: number;
+  /** Bulk basis, optional. Site coverage as a fraction — reported, not calculated from. */
+  coverage?: number;
+  /** Units/net-ha override. Ignored for basket_of_rights and on the bulk basis. */
   density?: number;
   /** Required unless productType is basket_of_rights. */
   averageUnitPrice?: number;
@@ -117,9 +146,26 @@ export interface QuickValuationResult {
   netRatioWasDefaulted: boolean;
   areaSplitMode: "ratio" | "absolute";
 
+  basisUsed: OpportunityBasis | "basket";
   densityUsed: number;
   /** The inverse Morné asked for: opportunities per GROSS hectare, not net. */
   effectiveDensityPerGrossHectare: number;
+
+  /** Bulk basis only — the workings the report shows instead of a density. */
+  bulk?: {
+    floorFactor: number;
+    averageUnitSizeM2: number;
+    totalFloorAreaM2: number;
+    coverage?: number;
+    /**
+     * The density the bulk figures imply. Shown because it is the number that
+     * tells a seller whether their architect's scheme is plausible — and it is
+     * routinely far above any rule-of-thumb default.
+     */
+    impliedDensityPerNetHectare: number;
+    /** Set when the implied density exceeds every default in the ladder. */
+    exceedsDensityLadder: boolean;
+  };
 
   statusPctUsed: number;
   opportunities: number;
@@ -193,6 +239,8 @@ export function calculateQuickValuation(input: QuickValuationInput): QuickValuat
   let landValue: number;
   let valuePerOpportunity: number;
   let basketBreakdown: QuickValuationResult["basketBreakdown"];
+  let bulk: QuickValuationResult["bulk"];
+  let basisUsed: QuickValuationResult["basisUsed"];
 
   if (input.productType === "basket_of_rights") {
     if (!input.basket || input.basket.length === 0) {
@@ -217,11 +265,38 @@ export function calculateQuickValuation(input: QuickValuationInput): QuickValuat
     landValue = totalGrossRealisation * statusPctUsed;
     valuePerOpportunity = totalGrossRealisation / totalOpportunities;
     densityUsed = totalOpportunities / netHectares;
+    basisUsed = "basket";
   } else {
     assertFinitePositive(input.averageUnitPrice ?? NaN, "averageUnitPrice");
-    densityUsed = input.density ?? DENSITY_DEFAULTS[input.productType];
-    assertFinitePositive(densityUsed, "density");
-    opportunities = densityUsed * netHectares;
+    basisUsed = input.basis ?? "density";
+
+    if (basisUsed === "bulk") {
+      assertFinitePositive(input.floorFactor ?? NaN, "floorFactor");
+      assertFinitePositive(input.averageUnitSizeM2 ?? NaN, "averageUnitSizeM2");
+
+      // Floor factor is granted against the gross site area, so the whole site
+      // earns bulk — including the parts that cannot be built on. That is what
+      // lets a site with half of it under conservation still carry a scheme,
+      // and it is the single most common thing a density-only model gets wrong.
+      const totalFloorAreaM2 = input.floorFactor! * grossHectares * 10_000;
+      opportunities = totalFloorAreaM2 / input.averageUnitSizeM2!;
+      densityUsed = opportunities / netHectares;
+
+      bulk = {
+        floorFactor: input.floorFactor!,
+        averageUnitSizeM2: input.averageUnitSizeM2!,
+        totalFloorAreaM2,
+        coverage: input.coverage,
+        impliedDensityPerNetHectare: densityUsed,
+        exceedsDensityLadder:
+          densityUsed > Math.max(...Object.values(DENSITY_DEFAULTS)),
+      };
+    } else {
+      densityUsed = input.density ?? DENSITY_DEFAULTS[input.productType];
+      assertFinitePositive(densityUsed, "density");
+      opportunities = densityUsed * netHectares;
+    }
+
     valuePerOpportunity = input.averageUnitPrice! * statusPctUsed;
     landValue = valuePerOpportunity * opportunities;
   }
@@ -236,8 +311,10 @@ export function calculateQuickValuation(input: QuickValuationInput): QuickValuat
     netRatioUsed,
     netRatioWasDefaulted,
     areaSplitMode,
+    basisUsed,
     densityUsed,
     effectiveDensityPerGrossHectare,
+    bulk,
     statusPctUsed,
     opportunities,
     landValue,

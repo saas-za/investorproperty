@@ -39,6 +39,23 @@ export type LandStage =
   | "Sold"
   | "Withdrawn";
 
+/**
+ * One cadastral parcel attached to a land opportunity, picked off the map.
+ *
+ * A site is often several parcels being consolidated, which is why this is a
+ * list rather than a single erf number — and why the area on the row is the
+ * sum rather than any one parcel's extent.
+ */
+export interface AttachedParcel {
+  /** Surveyor-General parcel key — the stable identifier, not the erf number. */
+  key: string;
+  /** "Erf 4651" or "Farm 512 Portion 3". */
+  label: string;
+  areaM2: number;
+  province: string;
+  registrationDivision: string;
+}
+
 export interface LandOpportunity {
   id: string;
   name: string;
@@ -54,6 +71,11 @@ export interface LandOpportunity {
   ownerContact?: string;
   developerInterest?: string;
   notes?: string;
+  /** Parcels confirmed against the national cadastre rather than typed in. */
+  parcels?: AttachedParcel[];
+  /** Municipality the site falls in — decides which DC rate set applies. */
+  municipality?: string;
+  municipalityCode?: string;
 }
 
 export type Temperature = "New" | "Warm" | "Hot" | "Lost";
