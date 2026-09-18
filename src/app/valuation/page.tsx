@@ -155,6 +155,22 @@ const EXPECTATION_BASES: { value: ExpectationBasis; label: string; note: string 
   },
 ];
 
+/**
+ * What the site's own status implies the seller's expectation rests on.
+ *
+ * If the land is recorded as having approval granted, then by definition the
+ * seller's asking price rests on an approval — asking the question a second
+ * time, blank, invites a contradictory answer on the same form. This fills
+ * it in from the status and leaves it editable, because the status is the
+ * general case and the seller's actual basis can be more specific.
+ */
+const BASIS_FOR_STATUS: Record<string, ExpectationBasis> = {
+  raw_agricultural: "no_basis",
+  approval_in_process: "submitted_not_approved",
+  approval_granted: "sdp_approved",
+  zoned_sdp_approved: "sdp_approved",
+};
+
 export default function ValuationPage() {
   const [products, setProducts] = useState<Option[]>([]);
   const [statuses, setStatuses] = useState<Option[]>([]);
@@ -166,7 +182,7 @@ export default function ValuationPage() {
   const [productType, setProductType] = useState("");
   const [status, setStatus] = useState("");
   const [approvedOpportunities, setApprovedOpportunities] = useState("");
-  const [unitPrice, setUnitPrice] = useState("1000000");
+  const [unitPrice, setUnitPrice] = useState("");
   const [densityOverride, setDensityOverride] = useState("");
 
   // Density (units/ha) or bulk (floor factor × average unit size). A scheme
@@ -208,9 +224,17 @@ export default function ValuationPage() {
    * not flatten them into "assumed".
    */
   const [expectationBasis, setExpectationBasis] = useState<ExpectationBasis>("architect_concept");
+
+  // Pull the basis through from the site's status whenever that status
+  // changes — see BASIS_FOR_STATUS. Deliberately not guarded by a "touched"
+  // flag: a manual choice survives until the status itself changes, and when
+  // it does, the old answer is about a different set of facts.
+  useEffect(() => {
+    const implied = BASIS_FOR_STATUS[status];
+    if (implied) setExpectationBasis(implied);
+  }, [status]);
   const [assumedProductType, setAssumedProductType] = useState("");
   const [assumedDensityOverride, setAssumedDensityOverride] = useState("");
-  const [assumedUnitPrice, setAssumedUnitPrice] = useState("");
 
   // Map-picked parcels. The area they add up to drives the gross site area,
   // and the municipality they fall in decides whether development charges can
@@ -554,10 +578,15 @@ export default function ValuationPage() {
       setResult(approved);
 
       if (compareAssumption && !isBasket) {
+        // The seller's own price expectation is their asking price, not a
+        // per-unit figure — a seller has a number for the land in mind, and
+        // it rests on what's been approved, not on their own unit pricing.
+        // So the scheme they have in mind is valued at the same unit price
+        // the developer is working to.
         const assumedBody: Record<string, unknown> = {
           ...baseBody(),
           productType: assumedProductType,
-          averageUnitPrice: Number(assumedUnitPrice || unitPrice),
+          averageUnitPrice: Number(unitPrice),
         };
         if (assumedDensityOverride) assumedBody.density = Number(assumedDensityOverride);
         const assumed = await runCalc(assumedBody);
@@ -693,10 +722,13 @@ export default function ValuationPage() {
 
           <div>
             <div className="flex items-baseline justify-between">
+              {/* The developer's intended use leads, always — whether or not
+                  a seller's expectation is also being captured. What has
+                  already been approved doesn't change what a developer is
+                  willing to offer; it belongs to the seller's side of the
+                  conversation, which is where that question now lives. */}
               <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                {compareAssumption && !isBasket
-                  ? "Has any rights been approved on this site?"
-                  : "What can be built there?"}
+                What are you planning to build on the site?
               </label>
             </div>
             <select
@@ -931,8 +963,13 @@ export default function ValuationPage() {
               <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
                 Average selling price per unit (ZAR)
               </label>
+              {/* Empty with the example as a placeholder, not pre-filled.
+                  A real starting value has to be cleared in full before a
+                  new one can be typed — you can't click in and change 1 000 000
+                  to 1 200 000, you have to delete all of it first. */}
               <NumberInput
                 decimals={0} required
+                placeholder="e.g. 1 000 000"
                 value={unitPrice}
                 onChange={setUnitPrice}
                 className="mt-1.5 w-full rounded border border-navy/20 px-3 py-2 text-sm"
@@ -1128,18 +1165,6 @@ export default function ValuationPage() {
                         className="mt-2 w-full rounded border border-navy/20 px-3 py-2 text-sm"
                       />
                     </details>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                      Selling price per unit in that scheme (ZAR)
-                    </label>
-                    <NumberInput
-                      decimals={0}
-                      placeholder={`leave blank to reuse R${fmt(Number(unitPrice) || 0)}`}
-                      value={assumedUnitPrice}
-                      onChange={setAssumedUnitPrice}
-                      className="mt-1.5 w-full rounded border border-navy/20 px-3 py-2 text-sm"
-                    />
                   </div>
                 </div>
               )}

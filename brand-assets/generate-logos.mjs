@@ -48,14 +48,17 @@ const brands = {
       <rect x="20" y="6" width="6" height="22" fill="currentColor" stroke="none" />
     `,
   },
-  propello: {
-    name: "Propello",
+  parcelo: {
+    name: "Parcelo",
     primary: "#0f2e3d",
     accent: "#3fb0c4",
+    // An irregular parcel boundary, the way a real surveyed erf diagram
+    // looks, with a filled corner beacon — the physical marker that fixes
+    // where a boundary corner actually is. Replaced the Propello forward
+    // arrow when the platform was renamed.
     path: `
-      <path d="M5 16h16" />
-      <path d="M15 9l7 7-7 7" />
-      <circle cx="26" cy="16" r="2.5" fill="currentColor" stroke="none" />
+      <path d="M7 9 L23 6 L26 20 L15 27 L6 19 Z" />
+      <circle cx="7" cy="9" r="2.5" fill="currentColor" stroke="none" />
     `,
   },
 };

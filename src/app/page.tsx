@@ -1,25 +1,5 @@
+import Image from "next/image";
 import { platform, portal } from "@/config/platform";
-
-function Logomark({ className = "" }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 120 56"
-      className={className}
-      role="img"
-      aria-label={`${portal.name} logomark`}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.4"
-      strokeLinecap="square"
-    >
-      <path d="M22 44V22l7-5 7 5v22" />
-      <path d="M36 44V28l8 4v12" />
-      <path d="M14 44V32l8-5" />
-      <path d="M26 27v13M31 30v10M40 34v6" />
-      <path d="M8 44h96" />
-    </svg>
-  );
-}
 
 const capabilities = [
   {
@@ -42,19 +22,29 @@ export default function Home() {
       <section className="bg-navy text-shell">
         <div className="mx-auto max-w-5xl px-4 py-20 sm:py-28">
           <div className="flex flex-col items-start gap-8">
-            <Logomark className="h-14 w-auto text-gold-light" />
+            {/* The real mark, not a stand-in. Its background is #26415e —
+                exactly --brand-navy — so it sits on this section seamlessly
+                with no visible tile edge. */}
+            <Image
+              src="/logo.png"
+              alt={portal.name}
+              width={2229}
+              height={1083}
+              priority
+              className="h-20 w-auto sm:h-24"
+            />
             <div>
-              <p className="text-xs uppercase tracking-[0.35em] text-gold-light/80">
-                {portal.name}
-              </p>
-              <h1 className="mt-4 text-4xl font-light leading-tight sm:text-5xl">
+              <h1 className="text-4xl font-light leading-tight sm:text-5xl">
                 Know what the land is worth
                 <span className="block text-gold-gradient">
                   before you bid on it.
                 </span>
               </h1>
             </div>
-            <p className="max-w-xl text-base font-light leading-relaxed text-shell/75">
+            {/* Was max-w-xl, which broke the line mid-sentence for no reason
+                the reader can see. The section already has its own max width
+                and gutters; the paragraph does not need a second, tighter one. */}
+            <p className="max-w-3xl text-base font-light leading-relaxed text-shell/75">
               A free desktop land estimate tool for property developers. Enter an erf,
               its zoning and your build assumptions — get a defensible residual
               land value in minutes instead of a week of spreadsheet work.
