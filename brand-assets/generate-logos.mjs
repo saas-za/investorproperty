@@ -69,9 +69,17 @@ function buildSvg({ primary, accent, path }, { tile }) {
       ${path}
     </svg>`;
 
+  // Every mark's filled detail — the matrix's due cell, Convey's seal,
+  // Develop's tallest block, Parcelo's corner beacon — is authored as
+  // fill="currentColor" so it follows the surrounding text colour in the
+  // React components. A standalone SVG file has no surrounding text colour,
+  // so currentColor there resolves to its initial value: black. Setting
+  // color= explicitly is what makes these files match what the app renders,
+  // instead of quietly shipping a black blob on every mark but BondMatrix
+  // (the only one with no filled detail).
   if (!tile) {
     // Transparent background, mark only — for overlaying on any colour.
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 32 32" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="square">${path}</svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 32 32" fill="none" color="${accent}" stroke="${accent}" stroke-width="1.8" stroke-linecap="square">${path}</svg>`;
   }
 
   // App-icon style: mark on a rounded square of the brand's primary colour,
@@ -79,7 +87,7 @@ function buildSvg({ primary, accent, path }, { tile }) {
   return `
     <svg xmlns="http://www.w3.org/2000/svg" width="${SIZE}" height="${SIZE}" viewBox="0 0 32 32">
       <rect width="32" height="32" rx="5" fill="${primary}" />
-      <g transform="translate(4,4) scale(0.75)" fill="none" stroke="${accent}" stroke-width="1.8" stroke-linecap="square">
+      <g transform="translate(4,4) scale(0.75)" fill="none" color="${accent}" stroke="${accent}" stroke-width="1.8" stroke-linecap="square">
         ${path}
       </g>
     </svg>`;
