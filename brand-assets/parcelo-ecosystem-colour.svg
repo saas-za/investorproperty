@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-62 4 382 250" width="1528" height="1000"
+     fill="none" stroke-width="1.8" stroke-linecap="square" stroke-linejoin="round"
+     font-family="Inter, Helvetica, Arial, sans-serif">
+  <title>The Parcelo ecosystem</title>
+  <polygon points="48,62 158,41 179,137 103,185 41,130" stroke="#0f2e3d" stroke-width="2.2"/>
+
+  <circle cx="48" cy="62" r="26" fill="#0f2e3d"/>
+  <circle cx="48" cy="62" r="26" fill="none" stroke="#3fb0c4" stroke-width="2.2"/>
+  <g transform="translate(48 62) scale(0.62) translate(-16 -16)" color="#3fb0c4" stroke="#3fb0c4">
+    <path d="M7 9 L23 6 L26 20 L15 27 L6 19 Z"/>
+    <circle cx="7" cy="9" r="2.5" fill="currentColor" stroke="none"/>
+  </g>
+  <text x="14" y="67" text-anchor="end" font-size="13" font-weight="500" fill="#0f2e3d" stroke="none">Parcelo</text>
+
+  <circle cx="158" cy="41" r="26" fill="#123340"/>
+  <g transform="translate(158 41) scale(0.62) translate(-16 -16)" color="#d9a441" stroke="#d9a441">
+    <rect x="4" y="4" width="24" height="24" rx="2"/>
+    <path d="M12 4v24M20 4v24M4 12h24M4 20h24" stroke-width="1.2"/>
+    <rect x="20" y="20" width="8" height="8" fill="currentColor" stroke="none"/>
+  </g>
+  <text x="192" y="46" text-anchor="start" font-size="13" font-weight="500" fill="#123340" stroke="none">CRMatrix</text>
+
+  <circle cx="179" cy="137" r="26" fill="#224a3a"/>
+  <g transform="translate(179 137) scale(0.62) translate(-16 -16)" color="#6cb28c" stroke="#6cb28c">
+    <rect x="4" y="11" width="15" height="10" rx="5"/>
+    <rect x="13" y="11" width="15" height="10" rx="5"/>
+  </g>
+  <text x="213" y="142" text-anchor="start" font-size="13" font-weight="500" fill="#224a3a" stroke="none">BondMatrix</text>
+
+  <circle cx="103" cy="185" r="26" fill="#3a2c4a"/>
+  <g transform="translate(103 185) scale(0.62) translate(-16 -16)" color="#a882c9" stroke="#a882c9">
+    <path d="M4 28h24"/>
+    <rect x="6" y="18" width="6" height="10"/>
+    <rect x="13" y="12" width="6" height="16"/>
+    <rect x="20" y="6" width="6" height="22" fill="currentColor" stroke="none"/>
+  </g>
+  <text x="103" y="225" text-anchor="middle" font-size="13" font-weight="500" fill="#3a2c4a" stroke="none">Develop</text>
+
+  <circle cx="41" cy="130" r="26" fill="#1f3a5f"/>
+  <g transform="translate(41 130) scale(0.62) translate(-16 -16)" color="#4b9fd6" stroke="#4b9fd6">
+    <path d="M8 4h11l5 5v19H8z"/>
+    <path d="M19 4v5h5" stroke-width="1.2"/>
+    <circle cx="16" cy="19" r="4.5" fill="currentColor" stroke="none"/>
+  </g>
+  <text x="7" y="135" text-anchor="end" font-size="13" font-weight="500" fill="#1f3a5f" stroke="none">Convey</text>
+</svg>

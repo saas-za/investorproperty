@@ -31,7 +31,7 @@ export default function Home() {
               width={2229}
               height={1083}
               priority
-              className="h-20 w-auto sm:h-24"
+              className="h-60 w-auto sm:h-72"
             />
             <div>
               <h1 className="text-4xl font-light leading-tight sm:text-5xl">
