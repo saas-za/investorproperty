@@ -136,6 +136,14 @@ export interface QuickValuationInput {
   /** Required when productType is basket_of_rights; ignored otherwise. */
   basket?: BasketRow[];
   status: LandStatus;
+  /**
+   * Only meaningful when `status` is `approval_granted` — the actual approved
+   * count, straight from the approval document. When supplied it replaces
+   * whatever density or bulk would otherwise have produced: an approved
+   * number is a fact, not an estimate, and estimating over the top of a fact
+   * would be a strictly worse answer than the fact itself.
+   */
+  approvedOpportunities?: number;
 }
 
 export interface QuickValuationResult {
@@ -169,6 +177,8 @@ export interface QuickValuationResult {
 
   statusPctUsed: number;
   opportunities: number;
+  /** True when `opportunities` came from the approval document, not a density or bulk estimate. */
+  opportunitiesWereApproved: boolean;
   landValue: number;
   valuePerHectare: number;
   valuePerOpportunity: number;
@@ -301,6 +311,23 @@ export function calculateQuickValuation(input: QuickValuationInput): QuickValuat
     landValue = valuePerOpportunity * opportunities;
   }
 
+  // An approved count overrides whatever the basis above produced — see the
+  // input field's own comment for why a fact beats an estimate. Density is
+  // recomputed purely so the workings and the inverse-density metric still
+  // describe the number actually used, not the one that was overridden.
+  let opportunitiesWereApproved = false;
+  if (
+    input.productType !== "basket_of_rights" &&
+    input.status === "approval_granted" &&
+    input.approvedOpportunities !== undefined
+  ) {
+    assertFinitePositive(input.approvedOpportunities, "approvedOpportunities");
+    opportunities = input.approvedOpportunities;
+    densityUsed = opportunities / netHectares;
+    landValue = valuePerOpportunity * opportunities;
+    opportunitiesWereApproved = true;
+  }
+
   const valuePerHectare = landValue / grossHectares;
   const effectiveDensityPerGrossHectare = opportunities / grossHectares;
 
@@ -317,6 +344,7 @@ export function calculateQuickValuation(input: QuickValuationInput): QuickValuat
     bulk,
     statusPctUsed,
     opportunities,
+    opportunitiesWereApproved,
     landValue,
     valuePerHectare,
     valuePerOpportunity,
@@ -325,10 +353,24 @@ export function calculateQuickValuation(input: QuickValuationInput): QuickValuat
 }
 
 /** Exposed only for populating the UI's dropdowns — labels, not the maths. */
+/**
+ * Labels for the dropdown — plus, as of this call, the density default
+ * itself.
+ *
+ * This is a deliberate, explicit exception to the rule stated at the top of
+ * this file: the calibration is normally never handed out in bulk. Morné
+ * asked for it directly, to sanity-check his own tool's assumptions against
+ * a real site he was already unsure about — worth recording plainly rather
+ * than quietly dropping the earlier IP-gating stance. The practical effect
+ * is the same either way it's rendered: once a default is visible anywhere
+ * on the page, it can be read off the page by anyone, whether it sits in
+ * this dropdown text or a tooltip next to it.
+ */
 export function productOptions() {
   return (Object.keys(PRODUCT_LABELS) as ProductType[]).map((value) => ({
     value,
     label: PRODUCT_LABELS[value],
+    densityPerHa: value === "basket_of_rights" ? undefined : DENSITY_DEFAULTS[value],
   }));
 }
 

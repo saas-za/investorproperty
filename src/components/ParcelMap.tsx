@@ -70,7 +70,12 @@ export default function ParcelMap({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [searching, setSearching] = useState(false);
+  const [showZoomHint, setShowZoomHint] = useState(false);
   const mapId = useId();
+  const zoomHintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Declared here, not inside the async setup below, so the effect's own
+  // cleanup can reach the exact same listener it registered.
+  const wheelHandler = useRef<((e: WheelEvent) => void) | null>(null);
 
   // `selected` is read inside the click handler, which is registered once. A
   // ref keeps that handler looking at the current selection without tearing
@@ -94,10 +99,37 @@ export default function ParcelMap({
       const m = L.map(holder.current, {
         center: DEFAULT_CENTRE,
         zoom: 15,
-        // A stray scroll while reading the form should not throw the map
-        // across the country. Ctrl+scroll and the +/− buttons still zoom.
+        // Leaflet has no built-in "only zoom while a modifier key is held"
+        // mode — `scrollWheelZoom: false` disables the wheel entirely,
+        // including with Ctrl held. Left off here and handled by hand below,
+        // the same pattern Google Maps embeds use: a stray scroll while
+        // reading the form scrolls the page, not the map, and Ctrl+scroll (or
+        // a trackpad pinch, which browsers report as a wheel event with
+        // ctrlKey set) zooms the map instead of the browser tab.
         scrollWheelZoom: false,
       });
+
+      const container = holder.current;
+      const onWheel = (e: WheelEvent) => {
+        if (!(e.ctrlKey || e.metaKey)) {
+          // Not held: hint once, then let the event through untouched so the
+          // page scrolls exactly as if the map weren't there.
+          setShowZoomHint(true);
+          if (zoomHintTimer.current) clearTimeout(zoomHintTimer.current);
+          zoomHintTimer.current = setTimeout(() => setShowZoomHint(false), 1400);
+          return;
+        }
+        // Held: this is a deliberate zoom gesture. Without preventDefault the
+        // browser zooms the whole page instead of just the map.
+        e.preventDefault();
+        setShowZoomHint(false);
+        const point = m.mouseEventToContainerPoint(e);
+        const targetLatLng = m.containerPointToLatLng(point);
+        const nextZoom = m.getZoom() + (e.deltaY < 0 ? 1 : -1);
+        m.setZoomAround(targetLatLng, nextZoom, { animate: true });
+      };
+      wheelHandler.current = onWheel;
+      container.addEventListener("wheel", onWheel, { passive: false });
 
       // Satellite by default. On undeveloped land a street map shows almost
       // nothing — no roads, no buildings, no way to tell one blank rectangle
@@ -175,6 +207,11 @@ export default function ParcelMap({
 
     return () => {
       cancelled = true;
+      if (wheelHandler.current) {
+        holder.current?.removeEventListener("wheel", wheelHandler.current);
+        wheelHandler.current = null;
+      }
+      if (zoomHintTimer.current) clearTimeout(zoomHintTimer.current);
       map.current?.remove();
       map.current = null;
       shapes.current.clear();
@@ -298,6 +335,13 @@ export default function ParcelMap({
         {!ready && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-navy/40">
             Loading map…
+          </div>
+        )}
+        {showZoomHint && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-navy/40">
+            <span className="rounded bg-navy px-3 py-1.5 text-xs text-shell shadow">
+              Use Ctrl + scroll (or pinch) to zoom the map
+            </span>
           </div>
         )}
       </div>

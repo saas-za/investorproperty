@@ -109,6 +109,8 @@ export async function POST(request: Request) {
       averageUnitSizeM2:
         typeof body.averageUnitSizeM2 === "number" ? body.averageUnitSizeM2 : undefined,
       coverage: typeof body.coverage === "number" ? body.coverage : undefined,
+      approvedOpportunities:
+        typeof body.approvedOpportunities === "number" ? body.approvedOpportunities : undefined,
     });
     return NextResponse.json(result);
   } catch (e) {

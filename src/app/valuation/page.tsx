@@ -25,6 +25,8 @@ import {
 interface Option {
   value: string;
   label: string;
+  /** Products only — the density default, shown so the assumption is visible before you calculate. */
+  densityPerHa?: number;
 }
 
 interface BasketRow {
@@ -60,6 +62,7 @@ interface QuickResult {
   };
   statusPctUsed: number;
   opportunities: number;
+  opportunitiesWereApproved: boolean;
   landValue: number;
   valuePerHectare: number;
   valuePerOpportunity: number;
@@ -74,6 +77,16 @@ const fmtHa = (n: number) => n.toLocaleString("en-ZA", { maximumFractionDigits: 
 
 const HA_TO_M2 = 10_000;
 const PCT_EPSILON = 0.5;
+
+const todayYmd = () => new Date().toISOString().slice(0, 10).replace(/-/g, "");
+
+/** "constantia heights" → "Constantia Heights" — for the suburb in a PDF filename. */
+const properCase = (s: string) =>
+  s
+    .toLowerCase()
+    .split(" ")
+    .map((w) => (w ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(" ");
 
 const emptyBasketRow = (): BasketRow => ({ unitType: "", opportunities: "", pricePerOpportunity: "" });
 
@@ -152,6 +165,7 @@ export default function ValuationPage() {
 
   const [productType, setProductType] = useState("");
   const [status, setStatus] = useState("");
+  const [approvedOpportunities, setApprovedOpportunities] = useState("");
   const [unitPrice, setUnitPrice] = useState("1000000");
   const [densityOverride, setDensityOverride] = useState("");
 
@@ -210,6 +224,7 @@ export default function ValuationPage() {
   const [dcResult, setDcResult] = useState<DcSummary | null>(null);
   /** A real satellite image of the site, generated for the printed report. */
   const [siteMapUrl, setSiteMapUrl] = useState<string | null>(null);
+  const [printing, setPrinting] = useState(false);
 
   const [result, setResult] = useState<QuickResult | null>(null);
   const [assumedResult, setAssumedResult] = useState<QuickResult | null>(null);
@@ -405,6 +420,49 @@ export default function ValuationPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parcels.map((p) => p.key).join(",")]);
 
+  /**
+   * The browser suggests a PDF filename from the page's own `<title>` at the
+   * moment `window.print()` is called — this is the standard trick for
+   * controlling it, since there is no dedicated API for naming a print-to-PDF
+   * output. Reverse-geocoding for the suburb is a nicety, not a requirement:
+   * a failed lookup still prints, just without a suburb in the name.
+   */
+  async function printReport() {
+    setPrinting(true);
+    const primary = parcels[0];
+    let filename = `${todayYmd()}-Desktop-Land-Estimate`;
+
+    if (primary) {
+      filename = `${todayYmd()}-${primary.label}`;
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${primary.centroid.lat}&lon=${primary.centroid.lng}&zoom=16&addressdetails=1`,
+        );
+        const data = await res.json();
+        const addr = data?.address ?? {};
+        const suburb =
+          addr.suburb || addr.neighbourhood || addr.city_district || addr.town || addr.village;
+        if (suburb) filename = `${todayYmd()}-${properCase(suburb)}-${primary.label}`;
+      } catch {
+        // Filename is a nicety, not a requirement — printing still proceeds.
+      }
+    }
+
+    // Characters Windows won't allow in a filename — defensive, since the
+    // suburb name comes from a third-party geocoder rather than a fixed list.
+    filename = filename.replace(/[<>:"/\\|?*]/g, "");
+
+    const previousTitle = document.title;
+    document.title = filename;
+    // One frame so the browser has actually applied the new title before the
+    // print dialog reads it.
+    requestAnimationFrame(() => {
+      window.print();
+      document.title = previousTitle;
+      setPrinting(false);
+    });
+  }
+
   const areaSplitTolerance = splitUnit === "ha" ? 0.01 : 1;
   const areaMismatch =
     splitMode === "absolute" &&
@@ -474,6 +532,9 @@ export default function ValuationPage() {
         } else if (densityOverride) {
           approvedBody.density = Number(densityOverride);
         }
+        if (status === "approval_granted" && approvedOpportunities) {
+          approvedBody.approvedOpportunities = Number(approvedOpportunities);
+        }
       }
 
       const approved = await runCalc(approvedBody);
@@ -537,11 +598,6 @@ export default function ValuationPage() {
               </button>
             ))}
           </div>
-          <p className="mt-2 text-xs leading-relaxed text-navy/50">
-            {party === "seller"
-              ? "The figures are the same either way. The notes on the report will speak to you as the landowner."
-              : "The figures are the same either way. The notes on the report will speak to you as the buyer."}
-          </p>
         </div>
 
         <div className="no-print mt-6 rounded-lg border border-navy/10 bg-white p-6 shadow-sm">
@@ -636,7 +692,10 @@ export default function ValuationPage() {
               className="mt-1.5 w-full rounded border border-navy/20 px-3 py-2 text-sm"
             >
               {products.map((p) => (
-                <option key={p.value} value={p.value}>{p.label}</option>
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                  {p.densityPerHa ? ` (${p.densityPerHa} units/ha)` : ""}
+                </option>
               ))}
             </select>
             {!isBasket && (
@@ -754,6 +813,21 @@ export default function ValuationPage() {
                 <option key={s.value} value={s.value}>{s.label}</option>
               ))}
             </select>
+            {status === "approval_granted" && !isBasket && (
+              <div className="mt-2">
+                <NumberInput
+                  decimals={0}
+                  placeholder="e.g. 400"
+                  value={approvedOpportunities}
+                  onChange={setApprovedOpportunities}
+                  className="w-full rounded border border-navy/20 px-3 py-2 text-sm"
+                />
+                <span className="mt-1 block text-[11px] text-navy/40">
+                  How many opportunities were approved? Straight from the approval document — this
+                  replaces the density or floor-factor estimate below rather than adding to it.
+                </span>
+              </div>
+            )}
           </div>
 
           {isBasket ? (
@@ -958,9 +1032,6 @@ export default function ValuationPage() {
                     both.
                   </p>
                 )}
-                <p className="text-xs leading-relaxed text-navy/50">
-                  Type one and the other fills in against the gross area above.
-                </p>
               </div>
             )}
           </div>
@@ -1026,7 +1097,10 @@ export default function ValuationPage() {
                       className="mt-1.5 w-full rounded border border-navy/20 px-3 py-2 text-sm"
                     >
                       {products.filter((p) => p.value !== "basket_of_rights").map((p) => (
-                        <option key={p.value} value={p.value}>{p.label}</option>
+                        <option key={p.value} value={p.value}>
+                          {p.label}
+                          {p.densityPerHa ? ` (${p.densityPerHa} units/ha)` : ""}
+                        </option>
                       ))}
                     </select>
                     <details className="mt-1.5">
@@ -1106,10 +1180,11 @@ export default function ValuationPage() {
         {result && (
           <div className="no-print mt-6 flex justify-center">
             <button
-              onClick={() => window.print()}
-              className="rounded-sm bg-navy px-8 py-3 text-sm font-medium text-shell transition hover:bg-navy-deep"
+              onClick={printReport}
+              disabled={printing}
+              className="rounded-sm bg-navy px-8 py-3 text-sm font-medium text-shell transition hover:bg-navy-deep disabled:opacity-60"
             >
-              Download / print report (PDF)
+              {printing ? "Preparing…" : "Download / print report (PDF)"}
             </button>
           </div>
         )}
@@ -1405,7 +1480,15 @@ function Report({
             />
             <Row label="= Net developable area" value={`${fmtHa(result.netHectares)} ha`} strong />
             <Row label="What can be built" value={productLabel} />
-            {result.bulk ? (
+            {result.opportunitiesWereApproved ? (
+              // A density or floor-factor working here would show its own,
+              // different opportunity count sitting right above the actual
+              // approved one below — worse than showing neither.
+              <Row
+                label="Opportunities approved (from the approval document)"
+                value={fmt(result.opportunities)}
+              />
+            ) : result.bulk ? (
               <>
                 {/* Bulk is granted on the gross site, so the workings have to
                     show that — otherwise the floor area looks wrong against
