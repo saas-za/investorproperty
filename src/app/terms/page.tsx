@@ -50,10 +50,11 @@ const CLAUSES: { heading: string; paras: string[] }[] = [
     ],
   },
   {
-    heading: "5. Your information, and what we do not keep",
+    heading: "5. Your information, and what we do and do not keep",
     paras: [
-      "We do not store the property information you enter into the Tool. Site areas, prices, zoning details, selected parcels and the resulting figures are processed to return your result and are not retained by us afterwards.",
-      "Where you choose to contact us, or to register for a further stage of the service, we will hold the contact details you give us in order to respond to you. We will process those details in accordance with the Protection of Personal Information Act 4 of 2013. We will not sell them.",
+      "Certain figures from a calculation you run are recorded so we can improve the assumptions behind the Tool over time — among them the split between developable and non-developable area, what is being proposed for the site, indicative selling prices, and, where given, an asking price. This record is kept at the level of municipality and registration division only; it does not include an erf number, LPI code, exact coordinates, or any other identifier that fixes it to a specific, identifiable property.",
+      "This record is never linked to your name, email address, phone number, or any other contact detail. It cannot be used to identify you or, on its own, to identify the property a calculation concerned.",
+      "Where you choose to contact us, or to register for a further stage of the service, we will hold the contact details you give us in order to respond to you, separately from the record above. We will process those details in accordance with the Protection of Personal Information Act 4 of 2013. We will not sell them.",
       "The Tool queries publicly available government cadastral data to identify parcels. That query is made to resolve the point you click and is not used to build a record of your interest in any property.",
     ],
   },

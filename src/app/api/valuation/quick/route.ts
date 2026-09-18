@@ -8,6 +8,7 @@ import {
   type ProductType,
   type QuickValuationInput,
 } from "@/lib/server/valuation-engine";
+import { recordSubmission } from "@/lib/server/submissions";
 
 export const runtime = "nodejs";
 
@@ -50,7 +51,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Too many requests — try again shortly" }, { status: 429 });
   }
 
-  let body: Partial<QuickValuationInput>;
+  let body: Partial<QuickValuationInput> & {
+    party?: string;
+    municipality?: string;
+    registrationDivision?: string;
+    sellerExpectation?: number;
+    expectationBasis?: string;
+  };
   try {
     body = await request.json();
   } catch {
@@ -94,7 +101,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = calculateQuickValuation({
+    const input: QuickValuationInput = {
       grossHectares: typeof body.grossHectares === "number" ? body.grossHectares : undefined,
       developableHectares: hasAbsoluteSplit ? body.developableHectares : undefined,
       nonDevelopableHectares: hasAbsoluteSplit ? body.nonDevelopableHectares : undefined,
@@ -111,7 +118,24 @@ export async function POST(request: Request) {
       coverage: typeof body.coverage === "number" ? body.coverage : undefined,
       approvedOpportunities:
         typeof body.approvedOpportunities === "number" ? body.approvedOpportunities : undefined,
+    };
+    const result = calculateQuickValuation(input);
+
+    // Fire-and-forget — see submissions.ts for what this does and doesn't
+    // capture. Never awaited into the response: a slow or unreachable
+    // research database must never be the reason someone waits longer for
+    // their estimate, or sees it fail.
+    void recordSubmission(input, result, {
+      party: body.party === "seller" || body.party === "developer" ? body.party : undefined,
+      municipality: typeof body.municipality === "string" ? body.municipality : undefined,
+      registrationDivision:
+        typeof body.registrationDivision === "string" ? body.registrationDivision : undefined,
+      sellerExpectation:
+        typeof body.sellerExpectation === "number" ? body.sellerExpectation : undefined,
+      expectationBasis:
+        typeof body.expectationBasis === "string" ? body.expectationBasis : undefined,
     });
+
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof ValuationInputError) {

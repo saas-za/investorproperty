@@ -482,7 +482,20 @@ export default function ValuationPage() {
   }
 
   function baseBody(): Record<string, unknown> {
-    const body: Record<string, unknown> = { status };
+    const body: Record<string, unknown> = {
+      status,
+      // Context for the reference database only — never read back into the
+      // calculation itself. Coarse location, no exact parcel identifier; see
+      // supabase/schema.sql for why.
+      party,
+      municipality: municipality?.name,
+      registrationDivision: parcels[0]?.registrationDivision,
+      sellerExpectation: Number(sellerExpectation) || undefined,
+      expectationBasis:
+        compareAssumption && !isBasket
+          ? EXPECTATION_BASES.find((b) => b.value === expectationBasis)?.value
+          : undefined,
+    };
     if (splitMode === "absolute" && developableArea && nonDevelopableArea) {
       const toHa = (v: string) => (splitUnit === "ha" ? Number(v) : Number(v) / HA_TO_M2);
       body.developableHectares = toHa(developableArea);
@@ -1688,7 +1701,9 @@ function Report({
           an estimate, not a valuation — only a registered professional valuer may provide a
           valuation. It is not a substitute for a full feasibility study, a land survey, or
           professional advice. Figures are calibrated assumptions and will not match every site
-          exactly. No information about this property has been stored.
+          exactly. Anonymous, non-identifying figures from this calculation may be recorded to
+          improve those assumptions — no name, contact detail or exact property identifier is
+          attached to them.
         </p>
         <p className="mt-2 text-center text-[10px] leading-relaxed text-navy/35">
           © {new Date().getFullYear()} Investor Property. All rights reserved. The methodology and

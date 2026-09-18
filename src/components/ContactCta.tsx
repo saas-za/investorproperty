@@ -127,8 +127,9 @@ export default function ContactCta({ context }: { context?: string }) {
                   </button>
                 </div>
                 <p className="text-[11px] leading-relaxed text-shell/40">
-                  Your contact details are used to reply to you and nothing else. The property
-                  details you entered above are not sent with this and are not stored.
+                  Your contact details are used to reply to you and nothing else — they are not
+                  sent or linked to any calculation you ran above. See the terms of use for what
+                  a calculation itself records.
                 </p>
               </form>
             )
