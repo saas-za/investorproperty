@@ -208,7 +208,7 @@ that explicitly in the product; it defuses professional objections and is honest
 
 ## 6. Competitive position vs. SIMS (red-i)
 
-SIMS is transaction management — the downstream half, and the same ground Propello will occupy.
+SIMS is transaction management — the downstream half, and the same ground Parcelo will occupy.
 Your read that it's too complex is the opening, and it comes from a real place: you are building
 as an agent who works in the field, they built as software people.
 
@@ -296,7 +296,7 @@ The simple version you described, and deliberately nothing more:
 - [ ] Suggest achievable selling rate per m² by area and product instead of asking the user to guess
 - [ ] Competitor development benchmarking
 
-### Phase 7 — Propello handoff
+### Phase 7 — Parcelo handoff
 - [ ] Enable the `platform` config flag once the transaction system is built and tested
 - [ ] Contextual handoff at the point a deal is found viable, plus the footer link
 

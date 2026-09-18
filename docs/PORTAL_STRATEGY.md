@@ -44,7 +44,7 @@ Land listings (you already originate these)  →  matched to their stated criter
         ↓
 They buy and develop
         ↓
-Sales + transfer management  →  the CW/DW platform (ConveyAssist / Propello)
+Sales + transfer management  →  the CW/DW platform (ConveyAssist / Parcelo)
 ```
 
 Each stage feeds the next, and the free tool is what makes the top of it wide. That is the
@@ -149,7 +149,7 @@ making; a contact-form submission from 2024 is not.
 This also means the free tool needs no upsell mechanics inside it. The upsell happens in HubSpot,
 by a human, with context.
 
-## 7. The platform link (ConveyAssist / Propello)
+## 7. The platform link (ConveyAssist / Parcelo)
 
 The naming isn't settled, so nothing should hardcode it. `src/config/platform.ts` holds the
 name, tagline and URL in one place, plus an `enabled` flag that currently hides the reference
@@ -204,7 +204,7 @@ something to launch before the hard part is finished.
    idea submission, upvoting, and status (`considered` / `planned` / `shipped`). Two payoffs
    beyond the feedback itself — it signals an actively-developed product, and it is a continuous,
    self-selecting source of exactly the feature requests worth building.
-5. **Name: Propello preferred**, but the domain was renewed by its current holder while the site
+5. **Name: Parcelo preferred**, but the domain was renewed by its current holder while the site
    sits dormant. Nothing here blocks on it — `src/config/platform.ts` keeps the name in one place
    behind a disabled flag. Worth a backorder/broker approach on the domain in parallel, since a
    dormant-but-renewed domain sometimes lapses later.

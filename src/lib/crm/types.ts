@@ -1,6 +1,6 @@
 /**
  * Investor Property's own CRM Matrix — a replacement for Morné's personal
- * land-brokerage spreadsheet, not the multi-tenant Propello system built for
+ * land-brokerage spreadsheet, not the multi-tenant Parcelo system built for
  * ConveyAssist. Deliberately single-user: no roles, no round-robin, no
  * portal-per-audience. He sends from his own Google Workspace account
  * directly, so there is no sender-identity problem to solve here at all.

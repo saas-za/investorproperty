@@ -1213,7 +1213,7 @@ export default function ValuationPage() {
             rel="noopener noreferrer"
             className="text-xs text-navy/40 transition hover:text-navy/60"
           >
-            powered by <span className="font-medium text-gold-deep">Propello</span>
+            powered by <span className="font-medium text-gold-deep">Parcelo</span>
           </a>
         </div>
       </div>
@@ -1696,7 +1696,7 @@ function Report({
           to the terms of use at investorproperty.co.za/terms. This report may be shared only
           complete and unaltered.
         </p>
-        <p className="mt-2 text-center text-[10px] text-navy/30">powered by Propello</p>
+        <p className="mt-2 text-center text-[10px] text-navy/30">powered by Parcelo</p>
       </div>
     </div>
   );
