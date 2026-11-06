@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { offers, site } from "@/lib/site/content";
+import { SiteHeaderBar } from "@/components/site/SiteHeader";
 import { PORTAL } from "@/lib/site/vacancies";
 
 const nav = [
@@ -12,30 +12,8 @@ const nav = [
 ];
 
 export function SiteHeader() {
-  return (
-    <header className="bg-navy text-shell">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-8 gap-y-3 px-4 py-3">
-        <Link href="/" aria-label={`${site.name} home`}>
-          <Image src="/logo.png" alt={site.name} width={2229} height={1083} priority className="h-14 w-auto" />
-        </Link>
-        <nav aria-label="Main" className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-light">
-          {nav.map((n) => (
-            <Link key={n.href} href={n.href} className="transition hover:text-gold-light">
-              {n.label}
-            </Link>
-          ))}
-          {/* The client portal is Parcello's: a magic link, and the client's own area including Frankendale for those invited. */}
-          <a
-            href={`${PORTAL}/login?next=${encodeURIComponent("/frankendale")}`}
-            className="rounded-sm border border-gold/60 px-4 py-1.5 text-gold-light transition hover:bg-gold hover:text-navy-deep"
-          >
-            Client portal
-          </a>
-        </nav>
-      </div>
-      <div className="rule-gold h-px w-full" />
-    </header>
-  );
+  // The client portal is Parcello's: a magic link, and the client's own area including Frankendale for those invited.
+  return <SiteHeaderBar name={site.name} nav={nav} portalHref={`${PORTAL}/login?next=${encodeURIComponent("/frankendale")}`} />;
 }
 
 export function SiteFooter() {

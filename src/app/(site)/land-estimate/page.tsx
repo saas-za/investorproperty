@@ -47,7 +47,7 @@ export default function LandEstimate() {
             </p>
             <div className="flex flex-wrap items-center gap-4">
               <a
-                href="#valuation-form"
+                href="/valuation"
                 className="rounded-sm bg-gold px-6 py-3 text-sm font-medium text-navy-deep transition hover:bg-gold-light"
               >
                 Try the calculator
@@ -80,128 +80,6 @@ export default function LandEstimate() {
               </p>
             </div>
           ))}
-        </div>
-      </section>
-
-      <section id="valuation-form" className="mx-auto max-w-4xl px-4 pb-20">
-        <div className="rounded-lg border border-navy/10 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-gold-deep">Desktop land estimate</p>
-              <h3 className="mt-2 text-2xl font-light text-navy">Land Price Estimate</h3>
-            </div>
-            <div className="hidden h-16 w-16 items-center justify-center rounded-full bg-navy/5 sm:flex">
-              <span className="text-lg font-medium text-navy">R</span>
-            </div>
-          </div>
-
-          <form className="space-y-6">
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                Who is doing this calculation?
-              </label>
-              <div className="mt-2 flex gap-2 rounded-md bg-navy/5 p-1 text-xs">
-                <button type="button" className="flex-1 rounded bg-white px-3 py-2 font-medium text-navy shadow-sm">
-                  I&apos;m the developer / buyer
-                </button>
-                <button type="button" className="flex-1 rounded px-3 py-2 text-navy/60">
-                  I&apos;m the seller / landowner
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                Find the site
-              </label>
-              <button type="button" className="mt-2 text-xs text-gold-deep underline underline-offset-2">
-                Pick it on a map instead
-              </button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                  Gross site area
-                </label>
-                <input
-                  type="text"
-                  defaultValue="10 000"
-                  className="mt-2 w-full rounded border border-navy/20 px-3 py-2 text-sm"
-                />
-                <span className="mt-1 block text-[11px] text-navy/40">m²</span>
-              </div>
-              <div className="flex flex-col justify-start pt-7">
-                <input
-                  type="text"
-                  defaultValue="1"
-                  className="w-full rounded border border-navy/20 px-3 py-2 text-sm"
-                />
-                <span className="mt-1 block text-[11px] text-navy/40">hectares</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                What are you planning to build on the site?
-              </label>
-              <select className="mt-2 w-full rounded border border-navy/20 px-3 py-2 text-sm">
-                <option>Residential Apartment</option>
-                <option>Townhouses</option>
-                <option>Mixed-use development</option>
-                <option>Industrial development</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                Status of the opportunity
-              </label>
-              <select className="mt-2 w-full rounded border border-navy/20 px-3 py-2 text-sm">
-                <option>Raw agricultural</option>
-                <option>Approval in process</option>
-                <option>Approval granted</option>
-                <option>Zoned / SDP approved</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                Average selling price per unit (ZAR)
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. 1 000 000"
-                className="mt-2 w-full rounded border border-navy/20 px-3 py-2 text-sm"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wide text-navy/60">
-                Net developable area
-              </label>
-              <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <input type="text" defaultValue="44" className="rounded border border-navy/20 px-3 py-2 text-sm" />
-                <input type="text" defaultValue="56" className="rounded border border-navy/20 px-3 py-2 text-sm" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input type="checkbox" id="seller-expectation" className="h-4 w-4" />
-              <label htmlFor="seller-expectation" className="text-sm text-navy/70">
-                What is the seller&apos;s expectation?
-              </label>
-            </div>
-
-            <div className="pt-4">
-              <a
-                href="/sign-in"
-                className="inline-flex rounded-sm bg-gold px-6 py-3 text-sm font-medium text-navy-deep transition hover:bg-gold-light"
-              >
-                Calculate Developer Contributions
-              </a>
-            </div>
-          </form>
         </div>
       </section>
 
