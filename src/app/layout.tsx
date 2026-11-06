@@ -9,9 +9,10 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Investor Property Portal",
+  metadataBase: new URL("https://www.investorproperty.co.za"),
+  title: { default: "Investor Property", template: "%s | Investor Property" },
   description:
-    "Desktop land estimates, zoning insight and development feasibility for property developers.",
+    "Commercial property brokerage in Cape Town: industrial, commercial, vacant land and developments.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
