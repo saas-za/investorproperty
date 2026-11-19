@@ -107,6 +107,9 @@ export default function FrankendalePage() {
                 </tbody>
               </table>
               <p className="mt-4 text-xs font-light text-navy/55">Sizes are from the subdivision plan and must be confirmed by a Professional Land Surveyor.  Some phases are further subdivided into portions that may differ from the zoning on the interest map.  The map is for indication only and the Parcello Deal Room contains more detailed information.</p>
+              <a href="#express-interest" className="mt-8 inline-block rounded-sm bg-navy px-8 py-3 text-sm font-medium text-shell transition hover:bg-navy-deep">
+                Access the Deal Room
+              </a>
             </div>
           </div>
         </div>
