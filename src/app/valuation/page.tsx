@@ -7,6 +7,7 @@ import CoctZoningCheck from "@/components/CoctZoningCheck";
 import ContactCta from "@/components/ContactCta";
 import DevelopmentCharges, { type DcSummary } from "@/components/DevelopmentCharges";
 import NumberInput from "@/components/NumberInput";
+import PoweredByParcello from "@/components/PoweredByParcello";
 import ParcelMap, {
   type EthekwiniZoning,
   type Municipality,
@@ -602,6 +603,15 @@ export default function ValuationPage() {
   return (
     <main className="flex-1 bg-shell">
       <div className="mx-auto max-w-3xl px-4 py-8">
+        <div className="no-print mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-sm border border-navy/30 px-4 py-2 text-sm text-navy transition hover:border-gold-deep hover:text-gold-deep"
+          >
+            <span aria-hidden="true">←</span> Back to the website
+          </Link>
+        </div>
+
         {/* Title left, logo right — two columns, no subtitle. */}
         <div className="no-print flex items-center justify-between gap-6">
           <div>
@@ -609,7 +619,7 @@ export default function ValuationPage() {
               {portal.name}
             </Link>
             <h1 className="mt-1 text-xl font-normal text-navy sm:text-2xl">
-              Desktop Land Estimate
+              Land Price Estimate
             </h1>
           </div>
           <Image
@@ -1230,7 +1240,7 @@ export default function ValuationPage() {
         <ContactCta context="Desktop Land Estimate" />
 
         <p className="no-print mx-auto mt-8 max-w-2xl text-center text-xs leading-relaxed text-navy/40">
-          {COMPLIMENTARY_NOTE.replace(" and use of the tool is subject to the terms of use.", ", and use of the tool is subject to the ")}
+          {COMPLIMENTARY_NOTE.replace(" and use of the tool is subject to the terms of use.", " and use of the tool is subject to the ")}
           <Link href="/terms" className="underline underline-offset-2 hover:text-navy/70">
             terms of use
           </Link>
@@ -1245,14 +1255,9 @@ export default function ValuationPage() {
         </p>
 
         <div className="no-print mt-10 flex justify-center pb-4">
-          <a
-            href="https://serviceai.co.za"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-navy/40 transition hover:text-navy/60"
-          >
-            powered by <span className="font-medium text-gold-deep">Parcelo</span>
-          </a>
+          <span className="text-xs text-navy/40">
+            <PoweredByParcello />
+          </span>
         </div>
       </div>
     </main>
@@ -1736,7 +1741,9 @@ function Report({
           to the terms of use at investorproperty.co.za/terms. This report may be shared only
           complete and unaltered.
         </p>
-        <p className="mt-2 text-center text-[10px] text-navy/30">powered by Parcelo</p>
+        <p className="mt-2 text-center text-[10px] text-navy/30">
+          <PoweredByParcello />
+        </p>
       </div>
     </div>
   );

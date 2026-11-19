@@ -6,7 +6,7 @@ import { PORTAL } from "@/lib/site/vacancies";
 const field = "mt-1 w-full rounded border border-navy/20 bg-white px-3 py-2 text-sm text-navy";
 const label = "block text-xs font-medium uppercase tracking-wide text-navy/60";
 
-/** The Enquire and Offer forms on a unit's page. They go to the landlord through the portal; nothing is stored on this website. */
+/** The Enquire and Offer forms on a unit's page.  They go to the landlord through the portal; nothing is stored on this website. */
 export default function UnitForms({ spaceId }: { spaceId: string }) {
   return (
     <div className="grid gap-8 md:grid-cols-2">
@@ -43,13 +43,13 @@ function Form({ spaceId, kind }: { spaceId: string; kind: "enquiry" | "offer" })
       });
       const j = await res.json().catch(() => ({}));
       if (!j.ok) {
-        setError(j.error ?? "That could not be sent. Please try again.");
+        setError(j.error ?? "That could not be sent.  Please try again.");
         setState("idle");
         return;
       }
       setState("sent");
     } catch {
-      setError("We could not reach the server. Please try again.");
+      setError("We could not reach the server.  Please try again.");
       setState("idle");
     }
   }
@@ -60,7 +60,7 @@ function Form({ spaceId, kind }: { spaceId: string; kind: "enquiry" | "offer" })
       <h2 className="text-lg font-light">{kind === "offer" ? "Make an offer" : "Make an enquiry"}</h2>
       {state === "sent" ? (
         <p role="status" className="mt-4 text-sm font-light text-navy/70">
-          Thank you. Your {kind === "offer" ? "offer" : "enquiry"} has been sent and we will come back to you.
+          Thank you.  Your {kind === "offer" ? "offer" : "enquiry"} has been sent and we will come back to you.
         </p>
       ) : (
         <form onSubmit={submit} className="mt-4 space-y-4">
@@ -79,7 +79,7 @@ function Form({ spaceId, kind }: { spaceId: string; kind: "enquiry" | "offer" })
           {kind === "offer" && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={label} htmlFor="offerRent">Monthly rental, excl. VAT *</label>
+                <label className={label} htmlFor="offerRent">Monthly rental, excl.  VAT *</label>
                 <input id="offerRent" name="offerRent" inputMode="decimal" required className={field} />
               </div>
               <div>

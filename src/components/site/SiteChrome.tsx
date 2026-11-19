@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { offers, site } from "@/lib/site/content";
 import { SiteHeaderBar } from "@/components/site/SiteHeader";
-import { PORTAL } from "@/lib/site/vacancies";
+import { PORTAL, VACANCIES_ON } from "@/lib/site/vacancies";
 
-const nav = [
-  ...offers.map((o) => ({ href: `/${o.slug}`, label: o.name })),
-  { href: "/vacancy-schedules", label: "Vacancy schedules" },
+const services = offers.map((o) => ({ href: `/${o.slug}`, label: o.name }));
+const links = [
+  { href: "/frankendale", label: "Frankendale" },
+  ...(VACANCIES_ON ? [{ href: "/vacancy-schedules", label: "To let" }] : []),
   { href: "/land-estimate", label: "Land estimate" },
   { href: "/faq", label: "FAQ" },
   { href: "/contact", label: "Contact" },
@@ -13,13 +14,13 @@ const nav = [
 
 export function SiteHeader() {
   // The client portal is Parcello's: a magic link, and the client's own area including Frankendale for those invited.
-  return <SiteHeaderBar name={site.name} nav={nav} portalHref={`${PORTAL}/login?next=${encodeURIComponent("/frankendale")}`} />;
+  return <SiteHeaderBar name={site.name} services={services} links={links}portalHref={`${PORTAL}/login?next=${encodeURIComponent("/frankendale")}`} />;
 }
 
 export function SiteFooter() {
   return (
     <footer className="bg-navy-deep text-shell/80">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 text-sm font-light sm:grid-cols-3">
+      <div className="mx-auto grid max-w-screen-2xl gap-10 px-4 py-14 text-sm sm:px-8 lg:px-12 font-light sm:grid-cols-3">
         <div>
           <p className="font-medium text-shell">{site.name}</p>
           <p className="mt-3 leading-relaxed">{site.tagline}</p>
@@ -36,8 +37,8 @@ export function SiteFooter() {
               </li>
             ))}
             <li>
-              <Link href="/land-estimate" className="hover:text-gold-light">
-                Land estimate
+              <Link href="/frankendale" className="hover:text-gold-light">
+                Frankendale
               </Link>
             </li>
           </ul>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import EnquiryForm from "@/components/site/EnquiryForm";
+import PageHero from "@/components/site/PageHero";
 import { offers, site } from "@/lib/site/content";
 
 export const metadata: Metadata = {
@@ -16,16 +17,11 @@ export default async function ContactPage({ searchParams }: PageProps<"/contact"
 
   return (
     <main>
-      <section className="bg-navy text-shell">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <p className="text-xs uppercase tracking-[0.2em] text-gold-light">Contact us</p>
-          <h1 className="mt-4 text-3xl font-light sm:text-4xl">Let us help you get started</h1>
-          {interest && <p className="mt-4 text-sm font-light text-shell/70">Your enquiry is about: {interest}</p>}
-        </div>
-        <div className="rule-gold h-px w-full" />
-      </section>
+      <PageHero eyebrow="Contact us" title="Let us help you get started">
+        {interest && <p>Your enquiry is about: {interest}</p>}
+      </PageHero>
 
-      <section className="mx-auto grid max-w-6xl gap-12 px-4 py-16 md:grid-cols-[1fr_20rem]">
+      <section className="mx-auto grid max-w-screen-2xl gap-12 px-4 py-16 md:grid-cols-[1fr_20rem]">
         <EnquiryForm interest={interest} />
         <aside className="text-sm font-light leading-relaxed text-navy/80">
           <h2 className="text-lg font-medium text-navy">Or reach us directly</h2>

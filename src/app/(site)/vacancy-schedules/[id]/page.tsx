@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import UnitForms from "@/components/site/UnitForms";
 import ViewBeacon from "@/components/site/ViewBeacon";
-import { brochureUrl, fetchListing, photoUrl, rand } from "@/lib/site/vacancies";
+import { VACANCIES_ON, brochureUrl, fetchListing, photoUrl, rand } from "@/lib/site/vacancies";
 
 export async function generateMetadata({ params }: PageProps<"/vacancy-schedules/[id]">): Promise<Metadata> {
   const { id } = await params;
@@ -17,6 +17,7 @@ export async function generateMetadata({ params }: PageProps<"/vacancy-schedules
 }
 
 export default async function UnitPage({ params }: PageProps<"/vacancy-schedules/[id]">) {
+  if (!VACANCIES_ON) notFound();
   const { id } = await params;
   const l = await fetchListing(id);
   if (!l) notFound();
@@ -28,7 +29,7 @@ export default async function UnitPage({ params }: PageProps<"/vacancy-schedules
     <main>
       <ViewBeacon spaceId={l.id} />
       <section className="bg-navy text-shell">
-        <div className="mx-auto max-w-6xl px-4 py-12">
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 lg:px-12 py-12">
           <Link href="/vacancy-schedules" className="text-xs text-gold-light underline underline-offset-4">All vacancies</Link>
           <h1 className="mt-4 text-3xl font-light sm:text-4xl">{l.name}</h1>
           <p className="mt-2 text-sm font-light text-shell/70">{[l.building, l.address].filter(Boolean).join(", ")}</p>
@@ -36,7 +37,7 @@ export default async function UnitPage({ params }: PageProps<"/vacancy-schedules
         <div className="rule-gold h-px w-full" />
       </section>
 
-      <section className="mx-auto grid max-w-6xl gap-10 px-4 py-12 md:grid-cols-[1fr_20rem]">
+      <section className="mx-auto grid max-w-screen-2xl gap-10 px-4 py-12 md:grid-cols-[1fr_20rem]">
         <div>
           {l.photos.length > 0 && (
             <div className="grid grid-cols-2 gap-3">
@@ -62,7 +63,7 @@ export default async function UnitPage({ params }: PageProps<"/vacancy-schedules
         </aside>
       </section>
 
-      <section className="mx-auto max-w-6xl px-4 pb-20">
+      <section className="mx-auto max-w-screen-2xl px-4 sm:px-8 lg:px-12 pb-20">
         <UnitForms spaceId={l.id} />
       </section>
     </main>

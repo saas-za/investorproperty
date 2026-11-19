@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import PageHero from "@/components/site/PageHero";
 import Link from "next/link";
 import { generalFaqs, offers } from "@/lib/site/content";
 
@@ -23,15 +24,9 @@ export default function FaqPage() {
   return (
     <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <section className="bg-navy text-shell">
-        <div className="mx-auto max-w-6xl px-4 py-16">
-          <p className="text-xs uppercase tracking-[0.2em] text-gold-light">FAQ</p>
-          <h1 className="mt-4 text-3xl font-light sm:text-4xl">Need clarification?</h1>
-        </div>
-        <div className="rule-gold h-px w-full" />
-      </section>
+      <PageHero eyebrow="FAQ" title="Need clarification?" />
 
-      <section className="mx-auto max-w-3xl px-4 py-16">
+      <section className="mx-auto max-w-5xl px-4 sm:px-8 lg:px-12 py-16">
         <div className="space-y-4">
           {generalFaqs.map((f) => (
             <details key={f.q} className="group rounded-lg border border-navy/10 bg-white p-5 open:shadow-sm">
@@ -55,7 +50,7 @@ export default function FaqPage() {
         </div>
 
         <p className="mt-12 text-sm font-light text-navy/70">
-          The answers here are general. For advice on your own situation, please{" "}
+          The answers here are general.  For advice on your own situation, please{" "}
           <Link href="/contact" className="text-gold-deep underline underline-offset-4">
             contact us
           </Link>

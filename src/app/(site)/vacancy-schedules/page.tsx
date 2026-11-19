@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import PageHero from "@/components/site/PageHero";
 import Link from "next/link";
-import { KINDS, fetchListings, rand } from "@/lib/site/vacancies";
+import { notFound } from "next/navigation";
+import { KINDS, VACANCIES_ON, fetchListings, rand } from "@/lib/site/vacancies";
 
 export const metadata: Metadata = {
   title: "Vacancy schedules: commercial space to let",
-  description: "Available office, industrial and retail space to let. Filter by type, size and price, then enquire or make an offer.",
+  description: "Available office, industrial and retail space to let.  Filter by type, size and price, then enquire or make an offer.",
   alternates: { canonical: "/vacancy-schedules" },
 };
 
@@ -12,6 +14,7 @@ const field = "mt-1 w-full rounded border border-navy/20 bg-white px-3 py-2 text
 const label = "block text-xs font-medium uppercase tracking-wide text-navy/60";
 
 export default async function VacancySchedules({ searchParams }: PageProps<"/vacancy-schedules">) {
+  if (!VACANCIES_ON) notFound();
   const sp = await searchParams;
   const one = (k: string) => (Array.isArray(sp[k]) ? sp[k]![0] : (sp[k] as string | undefined)) ?? "";
   const q = new URLSearchParams();
@@ -20,18 +23,11 @@ export default async function VacancySchedules({ searchParams }: PageProps<"/vac
 
   return (
     <main>
-      <section className="bg-navy text-shell">
-        <div className="mx-auto max-w-6xl px-4 py-14">
-          <p className="text-xs uppercase tracking-[0.2em] text-gold-light">Vacancy schedules</p>
-          <h1 className="mt-4 max-w-3xl text-3xl font-light sm:text-4xl">Commercial space to let</h1>
-          <p className="mt-4 max-w-2xl text-sm font-light leading-relaxed text-shell/75">
-            The spaces landlords have available now. All rentals exclude VAT. Open a space to see more, then enquire or make an offer.
-          </p>
-        </div>
-        <div className="rule-gold h-px w-full" />
-      </section>
+      <PageHero eyebrow="Vacancy schedules" title="Commercial space to let">
+        The spaces landlords have available now.  All rentals exclude VAT. Open a space to see more, then enquire or make an offer.
+      </PageHero>
 
-      <section className="mx-auto max-w-6xl px-4 py-10">
+      <section className="mx-auto max-w-screen-2xl px-4 sm:px-8 lg:px-12 py-10">
         <form method="get" className="grid gap-3 rounded-lg border border-navy/10 bg-white p-4 sm:grid-cols-7">
           <div>
             <label className={label} htmlFor="kind">Type</label>
@@ -106,7 +102,7 @@ export default async function VacancySchedules({ searchParams }: PageProps<"/vac
               {listings.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-10 text-center font-light text-navy/60">
-                    Nothing matches right now. Try fewer filters, or <Link href="/contact" className="underline">tell us what you need</Link>.
+                    Nothing matches right now.  Try fewer filters, or <Link href="/contact" className="underline">tell us what you need</Link>.
                   </td>
                 </tr>
               )}

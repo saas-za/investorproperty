@@ -6,7 +6,7 @@ const field =
   "mt-2 w-full rounded border border-navy/20 bg-white px-3 py-2 text-sm text-navy outline-none focus:border-gold-deep";
 const label = "block text-xs font-medium uppercase tracking-wide text-navy/60";
 
-/** The contact form. Sends to /api/enquiry, which passes it to the HubSpot CRM and to Morné's inbox. */
+/** The contact form.  Sends to /api/enquiry, which passes it to the HubSpot CRM and to Morné's inbox. */
 export default function EnquiryForm({ interest }: { interest?: string }) {
   const [state, setState] = useState<"idle" | "sending" | "sent">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -34,13 +34,13 @@ export default function EnquiryForm({ interest }: { interest?: string }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(data.error ?? "That could not be sent. Please email us instead.");
+        setError(data.error ?? "That could not be sent.  Please email us instead.");
         setState("idle");
         return;
       }
       setState("sent");
     } catch {
-      setError("We could not reach the server. Please email us instead.");
+      setError("We could not reach the server.  Please email us instead.");
       setState("idle");
     }
   }
@@ -89,7 +89,7 @@ export default function EnquiryForm({ interest }: { interest?: string }) {
       {/* A real person never sees or fills this. */}
       <input name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
       <p className="text-xs font-light leading-relaxed text-navy/60">
-        Investor Property is committed to protecting and respecting your privacy. We will only use your personal
+        Investor Property is committed to protecting and respecting your privacy.  We will only use your personal
         information to answer your enquiry and to provide the services you ask for.
       </p>
       <label className="flex items-start gap-2 text-sm font-light text-navy/70">

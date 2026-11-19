@@ -6,7 +6,7 @@
  * from here so a further rename stays a one-line change.
  */
 export const platform = {
-  name: "Parcelo",
+  name: "Parcello",
   tagline: "Sales & transfer management for developments",
   url: "https://conveyassist.co.za",
   enabled: false,

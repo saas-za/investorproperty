@@ -3,6 +3,9 @@
  */
 export const PORTAL = (process.env.NEXT_PUBLIC_PORTAL_URL ?? "https://portal.parcello.co.za").replace(/\/$/, "");
 
+/** The "To let" section is switched off until real vacancies are published. Set NEXT_PUBLIC_VACANCIES=on to show it again. */
+export const VACANCIES_ON = process.env.NEXT_PUBLIC_VACANCIES === "on";
+
 export type Listing = {
   id: string;
   kind: string;

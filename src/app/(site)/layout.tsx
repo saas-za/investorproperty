@@ -1,7 +1,7 @@
 import { SiteFooter, SiteHeader } from "@/components/site/SiteChrome";
 
 /**
- * The public website. Always light (navy on shell) whatever the visitor's colour scheme, because
+ * The public website.  Always light (navy on shell) whatever the visitor's colour scheme, because
  * the brand is read on that ground; the tools and portal keep their own layouts.
  */
 export default function SiteLayout({ children }: LayoutProps<"/">) {

@@ -4,7 +4,7 @@ import { platform } from "@/config/platform";
 export const metadata: Metadata = {
   title: "Land estimate for developers and landowners",
   description:
-    "A desktop land price estimate for property developers and landowners in South Africa. Enter the site, its zoning and your build assumptions to see a defensible residual land value.",
+    "A desktop land price estimate for property developers and landowners in South Africa.  Enter the site, its zoning and your build assumptions to see a defensible residual land value.",
   alternates: { canonical: "/land-estimate" },
 };
 
@@ -27,7 +27,7 @@ export default function LandEstimate() {
   return (
     <main className="flex-1">
       <section className="bg-navy text-shell">
-        <div className="mx-auto max-w-5xl px-4 py-20 sm:py-28">
+        <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 lg:px-12 py-20 sm:py-28">
           <div className="flex flex-col items-start gap-8">
             <div>
               <h1 className="text-4xl font-light leading-tight sm:text-5xl">
@@ -38,10 +38,10 @@ export default function LandEstimate() {
               </h1>
             </div>
             {/* Was max-w-xl, which broke the line mid-sentence for no reason
-                the reader can see. The section already has its own max width
+                the reader can see.  The section already has its own max width
                 and gutters; the paragraph does not need a second, tighter one. */}
             <p className="max-w-3xl text-base font-light leading-relaxed text-shell/75">
-              A free desktop land price estimate tool for property developers. Enter an erf,
+              A free desktop land price estimate tool for property developers.  Enter an erf,
               its zoning and your build assumptions — get a defensible residual
               land value in minutes.
             </p>
@@ -60,7 +60,7 @@ export default function LandEstimate() {
               </a>
             </div>
             <p className="text-xs font-light text-shell/50">
-              Free to use. An account is required so your estimates are saved to
+              Free to use.  An account is required so your estimates are saved to
               you.
             </p>
           </div>
@@ -68,7 +68,7 @@ export default function LandEstimate() {
         <div className="rule-gold h-px w-full" />
       </section>
 
-      <section className="mx-auto max-w-5xl px-4 py-20">
+      <section className="mx-auto max-w-screen-2xl px-4 sm:px-8 lg:px-12 py-20">
         <h2 className="text-2xl font-light">What it does</h2>
         <div className="mt-10 grid gap-8 sm:grid-cols-3">
           {capabilities.map((c) => (
@@ -85,7 +85,7 @@ export default function LandEstimate() {
 
       {platform.enabled && (
         <section className="border-t border-navy/10 bg-shell">
-          <div className="mx-auto max-w-5xl px-4 py-14">
+          <div className="mx-auto max-w-screen-2xl px-4 sm:px-8 lg:px-12 py-14">
             <p className="text-sm font-light opacity-70">
               Taking a development to market?{" "}
               <a href={platform.url} className="underline underline-offset-4">

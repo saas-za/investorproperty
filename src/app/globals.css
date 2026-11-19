@@ -51,6 +51,8 @@
 }
 
 body {
+  /* Two spaces after a full stop, as written (house style): show them instead of collapsing them to one. */
+  white-space: pre-wrap;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-poppins), system-ui, sans-serif;

@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import PageHero from "@/components/site/PageHero";
 import { offers, site } from "@/lib/site/content";
 
+import PhaseMap from "../frankendale/PhaseMap";
+
 export const dynamicParams = false;
+
+/** Blue-toned, royalty-free (CC0) photographs behind each page heading.  Developments uses a zoomed crop of the Frankendale map instead. */
+const HERO_IMAGE: Record<string, string> = {
+  industrial: "/industrial.jpg",
+  commercial: "/commercial-blue.jpg",
+  "vacant-land": "/vacant-land-blue.jpg",
+};
 
 export function generateStaticParams() {
   return offers.map((o) => ({ slug: o.slug }));
@@ -45,22 +55,17 @@ export default async function OfferPage({ params }: PageProps<"/[slug]">) {
   return (
     <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <section className="bg-navy text-shell">
-        <div className="mx-auto max-w-6xl px-4 py-16 sm:py-20">
-          <p className="text-xs uppercase tracking-[0.2em] text-gold-light">{o.name}</p>
-          <h1 className="mt-4 max-w-3xl text-3xl font-light leading-tight sm:text-4xl">{o.title}</h1>
-          <p className="mt-6 max-w-2xl text-base font-light leading-relaxed text-shell/75">{o.intro}</p>
-          <Link
-            href={`/contact?about=${o.slug}`}
-            className="mt-8 inline-block rounded-sm bg-gold px-6 py-3 text-sm font-medium text-navy-deep transition hover:bg-gold-light"
-          >
-            Talk to us about {o.name.toLowerCase()}
-          </Link>
-        </div>
-        <div className="rule-gold h-px w-full" />
-      </section>
+      <PageHero eyebrow={o.name} title={o.title} image={HERO_IMAGE[o.slug]} backdrop={o.slug === "developments" ? <PhaseMap backdrop /> : undefined}>
+        <p>{o.intro}</p>
+        <Link
+          href={`/contact?about=${o.slug}`}
+          className="mt-8 inline-block rounded-sm bg-navy px-8 py-3 text-sm font-medium text-shell transition hover:bg-navy-deep"
+        >
+          Talk to us about {o.name.toLowerCase()}
+        </Link>
+      </PageHero>
 
-      <section className="mx-auto grid max-w-6xl gap-12 px-4 py-16 md:grid-cols-2">
+      <section className="mx-auto grid max-w-screen-2xl gap-16 px-4 py-20 sm:px-8 md:grid-cols-2 lg:px-12">
         <div>
           <h2 className="text-2xl font-light">Who we help</h2>
           <ul className="mt-6 space-y-3 text-sm font-light leading-relaxed text-navy/80">
@@ -87,7 +92,7 @@ export default async function OfferPage({ params }: PageProps<"/[slug]">) {
       </section>
 
       <section className="border-t border-navy/10 bg-white">
-        <div className="mx-auto max-w-3xl px-4 py-16">
+        <div className="mx-auto max-w-5xl px-4 sm:px-8 lg:px-12 py-16">
           <h2 className="text-2xl font-light">Common questions</h2>
           <div className="mt-8 space-y-8">
             {o.faqs.map((f) => (
