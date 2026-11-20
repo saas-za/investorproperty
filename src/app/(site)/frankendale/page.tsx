@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import Image from "next/image";
 import InterestForm from "./InterestForm";
 import PhaseMap, { COLOUR, OPEN } from "./PhaseMap";
 
@@ -29,8 +30,13 @@ const WHY: [string, ReactNode][] = [
 export default function FrankendalePage() {
   return (
     <main>
-      <section className="bg-navy text-shell">
-        <div className="mx-auto max-w-screen-2xl px-4 py-24 sm:px-8 sm:py-32 lg:px-12">
+      <section className="relative overflow-hidden bg-navy text-shell">
+        <div aria-hidden="true" className="absolute inset-y-0 right-0 w-full lg:w-[65%]">
+          <Image src="/frankendale-blue.jpg" alt="" fill priority sizes="65vw" className="object-cover object-center" />
+          <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/80 to-navy/0 lg:via-navy/50" />
+          <div className="absolute inset-0 bg-navy/40 lg:hidden" />
+        </div>
+        <div className="relative mx-auto max-w-screen-2xl px-4 py-24 sm:px-8 sm:py-32 lg:px-12">
           <p className="text-xs uppercase tracking-[0.2em] text-gold-light">Blaauwberg, Cape Town</p>
           <h1 className="mt-6 max-w-4xl text-4xl font-light leading-tight sm:text-6xl">
             Frankendale <span className="text-gold-gradient">Green Industrial Park</span>
