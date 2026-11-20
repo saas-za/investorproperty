@@ -36,7 +36,7 @@ export default function FrankendalePage() {
             Frankendale <span className="text-gold-gradient">Green Industrial Park</span>
           </h1>
           <p className="mt-8 max-w-2xl text-lg font-light leading-relaxed text-shell/75">
-            Approved, subdivided industrial land, released in phases.  The first release is the southern portion: phases 1, 2, 5 and 6.
+            Investor Property has been mandated to introduce buyers to Frankendale.  Approved, subdivided industrial land, released in phases.  The first release is the southern portion: phases 1, 2, 5 and 6.  Register your interest to be added to the launch of this exciting new development.
           </p>
           <a href="#express-interest" className="mt-10 inline-block rounded-sm bg-gold px-8 py-3 text-sm font-medium text-navy-deep transition hover:bg-gold-light">
             Express interest
@@ -134,23 +134,6 @@ export default function FrankendalePage() {
               </li>
             ))}
           </ul>
-        </div>
-      </section>
-
-      <section className="border-t border-navy/15">
-        <div className="mx-auto grid max-w-screen-2xl gap-12 px-4 py-20 sm:px-8 lg:grid-cols-3 lg:px-12">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-gold-deep">Investor Property</p>
-            <h2 className="mt-5 text-3xl font-light leading-snug">Your introduction to Frankendale</h2>
-          </div>
-          <div className="lg:col-span-2">
-            <p className="max-w-2xl text-lg font-light leading-relaxed text-navy/80">
-              Investor Property has been mandated to introduce buyers to Frankendale.  When you register your interest it is recorded with the date, and we are your point of contact for Frankendale.
-            </p>
-            <a href="#express-interest" className="mt-8 inline-block rounded-sm bg-navy px-8 py-3 text-sm font-medium text-shell transition hover:bg-navy-deep">
-              Register my interest
-            </a>
-          </div>
         </div>
       </section>
 
